@@ -1,0 +1,278 @@
+###############################################################################
+#  DevSecOps Lab - Docker Compose
+#  Entorno completo para prácticas de seguridad en el pipeline CI/CD
+#
+#  Optimizado para servidores con 8 GB de RAM
+#  Uso: docker compose up -d
+###############################################################################
+
+services:
+
+  # ===========================================================
+  # GitLab CE - Source Code Management + CI/CD Pipeline
+  # ===========================================================
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    container_name: devsecops-gitlab
+    hostname: gitlab.devsecops.local
+    restart: unless-stopped
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://${SERVER_IP:-localhost}:${GITLAB_PORT_HTTP:-8929}'
+        gitlab_rails['gitlab_shell_ssh_port'] = ${GITLAB_PORT_SSH:-2224}
+        gitlab_rails['initial_root_password'] = '${GITLAB_ROOT_PASSWORD:-DevSecOps2024!}'
+        # Optimizaciones para 8GB RAM
+        puma['worker_processes'] = 2
+        puma['min_threads'] = 1
+        puma['max_threads'] = 2
+        sidekiq['max_concurrency'] = 5
+        sidekiq['min_concurrency'] = 1
+        postgresql['shared_buffers'] = "128MB"
+        postgresql['max_worker_processes'] = 4
+        prometheus_monitoring['enable'] = false
+        grafana['enable'] = false
+        alertmanager['enable'] = false
+        node_exporter['enable'] = false
+        redis_exporter['enable'] = false
+        postgres_exporter['enable'] = false
+        gitlab_exporter['enable'] = false
+        # Desactivar registro abierto (seguridad)
+        gitlab_rails['gitlab_signup_enabled'] = false
+    ports:
+      - "${GITLAB_PORT_HTTP:-8929}:${GITLAB_PORT_HTTP:-8929}"
+      - "${GITLAB_PORT_SSH:-2224}:22"
+    volumes:
+      - ${GITLAB_HOME:-./data/gitlab}/config:/etc/gitlab
+      - ${GITLAB_HOME:-./data/gitlab}/logs:/var/log/gitlab
+      - ${GITLAB_HOME:-./data/gitlab}/data:/var/opt/gitlab
+    shm_size: '256m'
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+        reservations:
+          memory: 2G
+    networks:
+      - devsecops-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${GITLAB_PORT_HTTP:-8929}/-/health"]
+      interval: 60s
+      timeout: 30s
+      retries: 10
+      start_period: 300s
+
+  # ===========================================================
+  # SonarQube - SAST (Análisis Estático de Código)
+  # ===========================================================
+  sonarqube-db:
+    image: postgres:15-alpine
+    container_name: devsecops-sonar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${SONAR_JDBC_USERNAME:-sonar}
+      POSTGRES_PASSWORD: ${SONAR_JDBC_PASSWORD:-sonar}
+      POSTGRES_DB: sonarqube
+    volumes:
+      - sonarqube-db-data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - devsecops-net
+
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: devsecops-sonarqube
+    restart: unless-stopped
+    depends_on:
+      - sonarqube-db
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/sonarqube
+      SONAR_JDBC_USERNAME: ${SONAR_JDBC_USERNAME:-sonar}
+      SONAR_JDBC_PASSWORD: ${SONAR_JDBC_PASSWORD:-sonar}
+      # Optimizar para poca RAM
+      SONAR_WEB_JAVAOPTS: "-Xms128m -Xmx512m"
+      SONAR_CE_JAVAOPTS: "-Xms128m -Xmx384m"
+      SONAR_SEARCH_JAVAOPTS: "-Xms128m -Xmx384m"
+    ports:
+      - "${SONAR_PORT:-9000}:9000"
+    volumes:
+      - ${DEVSECOPS_HOME:-./data}/sonarqube/data:/opt/sonarqube/data
+      - ${DEVSECOPS_HOME:-./data}/sonarqube/extensions:/opt/sonarqube/extensions
+      - ${DEVSECOPS_HOME:-./data}/sonarqube/logs:/opt/sonarqube/logs
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 1G
+    networks:
+      - devsecops-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/api/system/status | grep -q UP || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  # ===========================================================
+  # OWASP ZAP - DAST (Análisis Dinámico de Seguridad)
+  # ===========================================================
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    container_name: devsecops-zap
+    restart: unless-stopped
+    command: zap.sh -daemon -host 0.0.0.0 -port 8090 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true -config api.disablekey=true
+    ports:
+      - "${ZAP_PORT:-8090}:8090"
+    volumes:
+      - zap-data:/zap/wrk
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - devsecops-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/JSON/core/view/version/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ===========================================================
+  # DefectDojo - Gestión de Vulnerabilidades
+  # ===========================================================
+  defectdojo-db:
+    image: mysql:8.0
+    container_name: devsecops-dojo-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DD_ADMIN_PASSWORD:-DevSecOps2024!}
+      MYSQL_DATABASE: defectdojo
+      MYSQL_USER: defectdojo
+      MYSQL_PASSWORD: defectdojo
+    volumes:
+      - defectdojo-db-data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - devsecops-net
+
+  defectdojo:
+    image: defectdojo/defectdojo-django:latest
+    container_name: devsecops-defectdojo
+    restart: unless-stopped
+    depends_on:
+      - defectdojo-db
+    environment:
+      DD_DATABASE_ENGINE: django.db.backends.mysql
+      DD_DATABASE_HOST: defectdojo-db
+      DD_DATABASE_PORT: "3306"
+      DD_DATABASE_NAME: defectdojo
+      DD_DATABASE_USER: defectdojo
+      DD_DATABASE_PASSWORD: defectdojo
+      DD_SECRET_KEY: "devsecops-lab-secret-key-change-in-production"
+      DD_CREDENTIAL_AES_256_KEY: "devsecops-lab-aes-key-change-prod"
+      DD_ADMIN_USER: admin
+      DD_ADMIN_PASSWORD: ${DD_ADMIN_PASSWORD:-DevSecOps2024!}
+      DD_ADMIN_MAIL: admin@devsecops.local
+      DD_ALLOWED_HOSTS: "*"
+    ports:
+      - "${DEFECTDOJO_PORT:-8080}:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - devsecops-net
+
+  # ===========================================================
+  # OWASP Juice Shop - Aplicación Vulnerable para Prácticas
+  # ===========================================================
+  juiceshop:
+    image: bkimminich/juice-shop:latest
+    container_name: devsecops-juiceshop
+    restart: unless-stopped
+    ports:
+      - "${JUICESHOP_PORT:-3000}:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - devsecops-net
+
+  # ===========================================================
+  # Prometheus - Recolección de Métricas
+  # ===========================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: devsecops-prometheus
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - devsecops-net
+
+  # ===========================================================
+  # Grafana - Dashboards y Visualización
+  # ===========================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: devsecops-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-DevSecOps2024!}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_HTTP_PORT: "3001"
+    ports:
+      - "${GRAFANA_PORT:-3001}:3001"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - devsecops-net
+    depends_on:
+      - prometheus
+
+# ===========================================================
+# Volúmenes persistentes
+# ===========================================================
+volumes:
+  sonarqube-db-data:
+  zap-data:
+  defectdojo-db-data:
+  prometheus-data:
+  grafana-data:
+
+# ===========================================================
+# Red del laboratorio
+# ===========================================================
+networks:
+  devsecops-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
