@@ -61,17 +61,51 @@ El script automáticamente:
 
 Después de la instalación, los servicios estarán disponibles en:
 
-| Servicio | URL | Credenciales |
-|----------|-----|-------------|
-| GitLab CE | `http://<IP>:8929` | root / DevSecOps2024! |
-| SonarQube | `http://<IP>:9000` | admin / admin |
-| OWASP ZAP | `http://<IP>:8090` | Sin autenticación (API) |
-| DefectDojo | `http://<IP>:8080` | admin / DevSecOps2024! |
-| Juice Shop | `http://<IP>:3000` | -- |
-| Grafana | `http://<IP>:3001` | admin / DevSecOps2024! |
-| Prometheus | `http://<IP>:9090` | -- |
+| Servicio | URL | Usuario | Contraseña | Notas |
+|----------|-----|---------|------------|-------|
+| **GitLab CE** | `http://<IP>:8929` | `root` | `DevSecOps2024!` | SSH disponible en puerto `2224` |
+| **SonarQube** | `http://<IP>:9000` | `admin` | `admin` | Pide cambio de contraseña en el primer login |
+| **OWASP ZAP** | `http://<IP>:8090` | -- | -- | API sin autenticación (`api.disablekey=true`) |
+| **DefectDojo** | `http://<IP>:8080` | `admin` | `DevSecOps2024!` | Backend PostgreSQL |
+| **Juice Shop** | `http://<IP>:3000` | -- | -- | App vulnerable, no requiere login inicial |
+| **Grafana** | `http://<IP>:3001` | `admin` | `DevSecOps2024!` | Datasource Prometheus preconfigurado |
+| **Prometheus** | `http://<IP>:9090` | -- | -- | Sin autenticación |
 
-> **Nota**: GitLab CE tarda ~5 minutos en arrancar completamente.
+> **Nota**: GitLab CE tarda ~5 minutos en arrancar completamente. Puedes verificar su estado con:
+> ```bash
+> curl -s http://localhost:8929/-/readiness
+> ```
+
+### Credenciales por defecto
+
+Todas las contraseñas por defecto están definidas en el archivo `.env` en la raíz del proyecto.
+Puedes modificarlas **antes** de ejecutar `install.sh` o `docker compose up -d`:
+
+```bash
+# .env - Variables principales de credenciales
+GITLAB_ROOT_PASSWORD=DevSecOps2024!    # root password de GitLab
+DD_ADMIN_PASSWORD=DevSecOps2024!       # admin password de DefectDojo
+GF_SECURITY_ADMIN_PASSWORD=DevSecOps2024!  # admin password de Grafana
+SONAR_JDBC_USERNAME=sonar              # usuario BD interna de SonarQube
+SONAR_JDBC_PASSWORD=sonar              # password BD interna de SonarQube
+```
+
+> **Importante**: SonarQube usa credenciales internas `admin/admin` que no se configuran desde `.env`. Cambia la contraseña en el primer acceso desde la interfaz web.
+
+### Puertos utilizados
+
+| Puerto | Servicio | Protocolo |
+|--------|----------|-----------|
+| `8929` | GitLab CE (HTTP) | HTTP |
+| `2224` | GitLab CE (SSH) | SSH |
+| `9000` | SonarQube | HTTP |
+| `8090` | OWASP ZAP (API) | HTTP/REST |
+| `8080` | DefectDojo | HTTP |
+| `3000` | Juice Shop | HTTP |
+| `3001` | Grafana | HTTP |
+| `9090` | Prometheus | HTTP |
+
+Todos los puertos son configurables desde el archivo `.env`.
 
 ---
 

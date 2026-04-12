@@ -30,7 +30,6 @@ services:
         postgresql['shared_buffers'] = "128MB"
         postgresql['max_worker_processes'] = 4
         prometheus_monitoring['enable'] = false
-        grafana['enable'] = false
         alertmanager['enable'] = false
         node_exporter['enable'] = false
         redis_exporter['enable'] = false
@@ -94,13 +93,14 @@ services:
       # Optimizar para poca RAM
       SONAR_WEB_JAVAOPTS: "-Xms128m -Xmx512m"
       SONAR_CE_JAVAOPTS: "-Xms128m -Xmx384m"
-      SONAR_SEARCH_JAVAOPTS: "-Xms128m -Xmx384m"
+      SONAR_SEARCH_JAVAOPTS: "-Xms384m -Xmx384m"
     ports:
       - "${SONAR_PORT:-9000}:9000"
+    user: "1000:1000"
     volumes:
-      - ${DEVSECOPS_HOME:-./data}/sonarqube/data:/opt/sonarqube/data
-      - ${DEVSECOPS_HOME:-./data}/sonarqube/extensions:/opt/sonarqube/extensions
-      - ${DEVSECOPS_HOME:-./data}/sonarqube/logs:/opt/sonarqube/logs
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-extensions:/opt/sonarqube/extensions
+      - sonarqube-logs:/opt/sonarqube/logs
     deploy:
       resources:
         limits:
@@ -145,17 +145,15 @@ services:
   # DefectDojo - Gestión de Vulnerabilidades
   # ===========================================================
   defectdojo-db:
-    image: mysql:8.0
+    image: postgres:15-alpine
     container_name: devsecops-dojo-db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DD_ADMIN_PASSWORD:-DevSecOps2024!}
-      MYSQL_DATABASE: defectdojo
-      MYSQL_USER: defectdojo
-      MYSQL_PASSWORD: defectdojo
+      POSTGRES_DB: defectdojo
+      POSTGRES_USER: defectdojo
+      POSTGRES_PASSWORD: defectdojo
     volumes:
-      - defectdojo-db-data:/var/lib/mysql
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+      - defectdojo-db-data:/var/lib/postgresql/data
     deploy:
       resources:
         limits:
@@ -170,9 +168,9 @@ services:
     depends_on:
       - defectdojo-db
     environment:
-      DD_DATABASE_ENGINE: django.db.backends.mysql
+      DD_DATABASE_ENGINE: django.db.backends.postgresql
       DD_DATABASE_HOST: defectdojo-db
-      DD_DATABASE_PORT: "3306"
+      DD_DATABASE_PORT: "5432"
       DD_DATABASE_NAME: defectdojo
       DD_DATABASE_USER: defectdojo
       DD_DATABASE_PASSWORD: defectdojo
@@ -183,7 +181,7 @@ services:
       DD_ADMIN_MAIL: admin@devsecops.local
       DD_ALLOWED_HOSTS: "*"
     ports:
-      - "${DEFECTDOJO_PORT:-8080}:8080"
+      - "${DEFECTDOJO_PORT:-8080}:8081"
     deploy:
       resources:
         limits:
@@ -262,6 +260,9 @@ services:
 # ===========================================================
 volumes:
   sonarqube-db-data:
+  sonarqube-data:
+  sonarqube-extensions:
+  sonarqube-logs:
   zap-data:
   defectdojo-db-data:
   prometheus-data:
