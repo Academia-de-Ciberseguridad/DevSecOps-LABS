@@ -255,6 +255,38 @@ services:
     depends_on:
       - prometheus
 
+  # ===========================================================
+  # Jenkins - Orquestador CI/CD (alternativa enterprise a GitLab CI)
+  # Puerto: 8180 (8080=DefectDojo, 8090=ZAP, 9000=SonarQube)
+  # ===========================================================
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: devsecops-jenkins
+    restart: unless-stopped
+    user: root
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m -Djenkins.install.runSetupWizard=true"
+    ports:
+      - "${JENKINS_PORT:-8180}:8080"
+      - "${JENKINS_AGENT_PORT:-50000}:50000"
+    volumes:
+      - jenkins-home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    networks:
+      - devsecops-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
 # ===========================================================
 # Volúmenes persistentes
 # ===========================================================
@@ -267,6 +299,7 @@ volumes:
   defectdojo-db-data:
   prometheus-data:
   grafana-data:
+  jenkins-home:
 
 # ===========================================================
 # Red del laboratorio
