@@ -12,7 +12,7 @@ cd /home/kali/DevSecOps-LABS
 # 1) Levantar servicios (GitLab primero; el resto se escalona solo por depends_on)
 docker compose up -d gitlab juiceshop defectdojo-db defectdojo-redis
 #    …esperar ~4-5 min a que GitLab responda en http://localhost:8929 …
-docker compose up -d sonarqube defectdojo defectdojo-celeryworker gitlab-runner
+docker compose up -d sonarqube defectdojo defectdojo-nginx defectdojo-celeryworker gitlab-runner
 
 # 2) Registrar el GitLab Runner (genera el PAT de root y lo registra con executor Docker)
 ./scripts/register-runner.sh

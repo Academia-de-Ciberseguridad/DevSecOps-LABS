@@ -53,8 +53,9 @@ docker compose up -d gitlab juiceshop defectdojo-db defectdojo-redis
 # …esperar a que GitLab responda (http://localhost:8929) ~4-5 min…
 # comprobar:  curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8929/users/sign_in   → 200
 
-# El resto (DefectDojo se auto-migra vía el contenedor 'initializer')
-docker compose up -d sonarqube defectdojo defectdojo-celeryworker gitlab-runner
+# El resto (DefectDojo se auto-migra vía el contenedor 'initializer';
+# defectdojo-nginx sirve el UI con estilos y hace de proxy al uwsgi)
+docker compose up -d sonarqube defectdojo defectdojo-nginx defectdojo-celeryworker gitlab-runner
 ```
 
 ### Paso 2 — Registrar el GitLab Runner

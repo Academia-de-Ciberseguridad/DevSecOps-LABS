@@ -245,14 +245,36 @@ services:
     volumes:
       # Activa WhiteNoise (extra_settings) para servir CSS/JS sin nginx.
       - ./config/defectdojo/local_settings.py:/app/docker/extra_settings/local_settings.py:ro
-    ports:
-      - "${DEFECTDOJO_PORT:-8080}:8081"
+    # Sin 'ports': el navegador entra por nginx (8080). El uwsgi queda accesible
+    # dentro de la red en :8081 (pipeline) y :3031 (nginx) sin publicar en el host.
     deploy:
       resources:
         limits:
           memory: 1G
         reservations:
           memory: 512M
+    networks:
+      - devsecops-net
+
+  # nginx de DefectDojo: sirve los estáticos (CSS/JS y librerías jquery/datatables/
+  # bootstrap… que vienen baked-in en ESTA imagen, NO en la django) y hace de proxy
+  # al uwsgi. Sin él, el UI sale "en blanco". El navegador entra por aquí (:8080).
+  defectdojo-nginx:
+    image: defectdojo/defectdojo-nginx:latest
+    container_name: devsecops-defectdojo-nginx
+    restart: unless-stopped
+    depends_on:
+      - defectdojo
+    environment:
+      DD_UWSGI_HOST: devsecops-defectdojo
+      DD_UWSGI_PORT: "3031"
+      NGINX_METRICS_ENABLED: "false"
+    ports:
+      - "${DEFECTDOJO_PORT:-8080}:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     networks:
       - devsecops-net
 
