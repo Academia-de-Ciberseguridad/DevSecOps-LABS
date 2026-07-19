@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Manual del Alumno — DevSecOps</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 18mm 18mm 18mm;
+    @bottom-center { content: "Manual DevSecOps — Academia de Ciberseguridad"; font-size: 8pt; color: #94a3b8; }
+    @bottom-right  { content: "Pág. " counter(page) " / " counter(pages); font-size: 8pt; color: #94a3b8; }
+  }
+  @page :first { margin: 0; @bottom-center { content: none; } @bottom-right { content: none; } }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #1e293b; font-size: 10.5pt; line-height: 1.5; }
+  h1, h2, h3 { color: #0f172a; line-height: 1.2; }
+  h2 { font-size: 16pt; border-bottom: 3px solid #2563eb; padding-bottom: 4px; margin-top: 26px; page-break-after: avoid; }
+  h3 { font-size: 12.5pt; color: #1d4ed8; margin-top: 18px; page-break-after: avoid; }
+  p { margin: 6px 0; }
+  code { background: #f1f5f9; color: #b91c1c; padding: 1px 5px; border-radius: 4px; font-family: "Consolas", "Courier New", monospace; font-size: 9pt; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 12px 14px; border-radius: 8px; font-family: "Consolas", "Courier New", monospace; font-size: 8.7pt; line-height: 1.45; overflow-x: auto; white-space: pre-wrap; page-break-inside: avoid; }
+  pre code { background: none; color: inherit; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 9.3pt; page-break-inside: avoid; }
+  th { background: #1e293b; color: #fff; text-align: left; padding: 7px 9px; }
+  td { border: 1px solid #e2e8f0; padding: 6px 9px; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .callout { border-radius: 8px; padding: 10px 14px; margin: 12px 0; font-size: 9.8pt; page-break-inside: avoid; }
+  .info { background: #eff6ff; border-left: 5px solid #2563eb; }
+  .tip  { background: #ecfdf5; border-left: 5px solid #10b981; }
+  .warn { background: #fff7ed; border-left: 5px solid #f59e0b; }
+  .callout b { color: #0f172a; }
+  ul, ol { margin: 6px 0 6px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  .cover { height: 297mm; background: linear-gradient(150deg, #0f172a 0%, #1e3a8a 60%, #2563eb 100%); color: #fff; padding: 45mm 22mm; }
+  .cover .kicker { font-size: 12pt; letter-spacing: 3px; text-transform: uppercase; color: #93c5fd; }
+  .cover h1 { color: #fff; font-size: 34pt; margin: 12px 0 4px; line-height: 1.1; }
+  .cover .sub { font-size: 14pt; color: #cbd5e1; margin-top: 8px; }
+  .cover .flow { margin-top: 40px; font-size: 11pt; color: #e2e8f0; line-height: 2; }
+  .cover .badge { display: inline-block; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); border-radius: 20px; padding: 4px 14px; margin: 4px 6px 4px 0; font-size: 9.5pt; }
+  .cover .foot { position: absolute; bottom: 30mm; font-size: 10pt; color: #93c5fd; }
+  .pipe { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0; page-break-inside: avoid; }
+  .stage { flex: 1 1 0; min-width: 70px; background: #f1f5f9; border: 1px solid #cbd5e1; border-top: 4px solid #2563eb; border-radius: 7px; padding: 8px 6px; text-align: center; font-size: 8.4pt; }
+  .stage b { display: block; font-size: 9pt; color: #0f172a; margin-bottom: 2px; }
+  .stage .tool { color: #2563eb; font-weight: 600; }
+  .num { display: inline-block; background: #2563eb; color: #fff; width: 22px; height: 22px; border-radius: 50%; text-align: center; line-height: 22px; font-size: 10pt; font-weight: 700; margin-right: 6px; }
+  .toc { font-size: 10.5pt; } .toc li { margin: 5px 0; }
+  a { color: #2563eb; text-decoration: none; }
+  .small { font-size: 8.7pt; color: #64748b; }
+</style>
+</head>
+<body>
+
+<!-- PORTADA -->
+<div class="cover">
+  <div class="kicker">Ciberseguridad · DevSecOps</div>
+  <h1>Manual del Alumno</h1>
+  <div class="sub">Sube tu proyecto y entiende el ciclo completo de seguridad automatizada (Shift-Left) en un pipeline CI/CD.</div>
+  <div class="flow">
+    <span class="badge">GitLab CI</span><span class="badge">Gitleaks</span><span class="badge">SonarQube</span>
+    <span class="badge">Trivy</span><span class="badge">OWASP ZAP</span><span class="badge">DefectDojo</span>
+  </div>
+  <div class="flow" style="margin-top:26px; font-size:10.5pt; color:#cbd5e1;">
+    Aprenderás a crear tu repositorio, generar tokens y API keys, configurar el pipeline
+    y disparar todos los análisis de seguridad con un solo <code style="color:#fca5a5;background:rgba(255,255,255,.1)">git push</code>.
+  </div>
+  <div class="foot">Academia de Ciberseguridad · Laboratorio DevSecOps</div>
+</div>
+
+<!-- INTRO -->
+<h2>1. ¿Qué vas a construir y por qué?</h2>
+<p><b>DevSecOps</b> significa integrar la <b>seguridad</b> dentro del proceso de desarrollo y entrega de software (Dev + Sec + Ops),
+de forma <b>automática</b>. La idea clave se llama <b>«Shift-Left»</b>: mover los controles de seguridad lo más «a la izquierda»
+posible del ciclo de vida — es decir, detectar los problemas <b>en el momento en que el desarrollador sube el código</b>, no
+semanas después en producción (cuando arreglarlos es caro y arriesgado).</p>
+
+<p>En esta práctica montarás un <b>pipeline</b>: una secuencia automática de trabajos («jobs») que se ejecuta <b>sola</b> cada vez
+que haces <code>git push</code>. Cada job aplica una técnica de seguridad distinta y, al final, todos los hallazgos se
+centralizan en un gestor de vulnerabilidades.</p>
+
+<div class="pipe">
+  <div class="stage"><b>1. Secrets</b><span class="tool">Gitleaks</span><br>credenciales en el código</div>
+  <div class="stage"><b>2. SAST</b><span class="tool">SonarQube</span><br>análisis del código</div>
+  <div class="stage"><b>3. SCA</b><span class="tool">Trivy</span><br>CVEs en librerías</div>
+  <div class="stage"><b>4. Build</b><span class="tool">Docker</span><br>construye imagen</div>
+  <div class="stage"><b>5. Container</b><span class="tool">Trivy</span><br>CVEs de la imagen</div>
+  <div class="stage"><b>6. DAST</b><span class="tool">OWASP ZAP</span><br>ataca la app viva</div>
+  <div class="stage"><b>7. Report</b><span class="tool">DefectDojo</span><br>consolida todo</div>
+</div>
+
+<div class="callout info"><b>El «wow» de la práctica:</b> tú solo haces <code>git push</code>. Nadie ejecuta las herramientas
+a mano. El pipeline detecta tu código, corre las 7 etapas en cadena y deja un panel con todas las vulnerabilidades
+clasificadas. <b>Eso es DevSecOps.</b></div>
+
+<h3>Las capas de seguridad (y qué cubre cada una)</h3>
+<table>
+  <tr><th>Técnica</th><th>Herramienta</th><th>¿Qué busca?</th><th>Ejemplo que encuentra</th></tr>
+  <tr><td><b>Secret Scanning</b></td><td>Gitleaks</td><td>Credenciales escritas en el código o el historial de git</td><td>Una API key o password «hardcodeada»</td></tr>
+  <tr><td><b>SAST</b><br><span class="small">(estático)</span></td><td>SonarQube</td><td>Fallos analizando el <b>código fuente</b>, sin ejecutarlo</td><td>SQL Injection, uso de MD5, command injection</td></tr>
+  <tr><td><b>SCA</b></td><td>Trivy</td><td>Vulnerabilidades conocidas (CVEs) en las <b>librerías</b> que usas</td><td>Una versión de <code>pyyaml</code> con CVE</td></tr>
+  <tr><td><b>Container Scanning</b></td><td>Trivy</td><td>CVEs en el <b>sistema operativo y paquetes</b> de la imagen Docker</td><td>Paquete del SO base desactualizado</td></tr>
+  <tr><td><b>DAST</b><br><span class="small">(dinámico)</span></td><td>OWASP ZAP</td><td>Fallos atacando la <b>aplicación en ejecución</b></td><td>XSS reflejado, cabeceras de seguridad ausentes</td></tr>
+  <tr><td><b>Vuln. Mgmt</b></td><td>DefectDojo</td><td>Consolida y gestiona <b>todos</b> los hallazgos anteriores</td><td>Panel único por severidad</td></tr>
+</table>
+<div class="callout tip"><b>Idea para recordar:</b> ninguna herramienta sola es suficiente. Cada una mira una «capa»
+distinta (secretos, tu código, tus dependencias, la imagen, la app corriendo). Juntas dan una visión completa.</div>
+
+<!-- HERRAMIENTAS -->
+<h2>2. Las herramientas del laboratorio</h2>
+<p>El instructor ya tiene levantados estos servicios. Tú los usarás desde el navegador. Todas las contraseñas del lab son
+<code>DevSecOps2024!</code>.</p>
+<table>
+  <tr><th>Herramienta</th><th>Para qué sirve</th><th>URL (navegador)</th><th>Usuario</th></tr>
+  <tr><td><b>GitLab</b></td><td>Guarda tu código y ejecuta el pipeline (CI/CD)</td><td>http://localhost:8929</td><td>root</td></tr>
+  <tr><td><b>SonarQube</b></td><td>Servidor donde se publican los resultados del SAST</td><td>http://localhost:9000</td><td>admin</td></tr>
+  <tr><td><b>DefectDojo</b></td><td>Gestor central de vulnerabilidades</td><td>http://localhost:8080</td><td>admin</td></tr>
+  <tr><td><b>Juice Shop</b></td><td>App vulnerable que ZAP ataca (objetivo del DAST)</td><td>http://localhost:3000</td><td>—</td></tr>
+</table>
+<div class="callout warn"><b>Muy importante — dos tipos de URL.</b> Tú abres las herramientas en <code>localhost:&lt;puerto&gt;</code>.
+Pero los <b>jobs del pipeline</b> corren dentro de contenedores y se comunican entre ellos por <b>nombre de contenedor</b>,
+no por <code>localhost</code>. Por eso en las variables usarás <code>http://devsecops-sonarqube:9000</code>,
+<code>http://devsecops-defectdojo:8081</code> y <code>http://devsecops-juiceshop:3000</code>.</div>
+
+<!-- CICLO PASO A PASO -->
+<h2>3. El ciclo, paso a paso</h2>
+<p>Ahora construyes el flujo con tus propias manos. Sigue los pasos en orden.</p>
+
+<h3><span class="num">1</span>Prepara el código de tu aplicación</h3>
+<p>Usarás una app web <b>intencionalmente vulnerable</b> (para que las herramientas tengan qué encontrar). Puedes partir de la
+carpeta <code>sample-project/</code> del laboratorio, que ya trae todo:</p>
+<pre><code>mkdir mi-app-devsecops
+cp -r sample-project/* mi-app-devsecops/
+cd mi-app-devsecops
+ls</code></pre>
+<p>Archivos que verás y qué es cada uno:</p>
+<ul>
+  <li><code>app.py</code> — la aplicación (Flask) con vulnerabilidades plantadas: SQL injection, XSS, secretos hardcodeados, hash MD5…</li>
+  <li><code>requirements.txt</code> — las dependencias, fijadas a versiones viejas con CVEs conocidos (para el SCA).</li>
+  <li><code>Dockerfile</code> — receta para construir la imagen de la app.</li>
+  <li><code>sonar-project.properties</code> — configuración del análisis de SonarQube.</li>
+  <li><code>.gitlab-ci.yml</code> — <b>el pipeline</b>. Es el corazón de todo (lo revisamos en el paso 6).</li>
+</ul>
+
+<h3><span class="num">2</span>Crea tu proyecto en GitLab y genera tu token de acceso</h3>
+<p><b>2.1 Crear el proyecto (interfaz web):</b></p>
+<ol>
+  <li>Entra a <b>http://localhost:8929</b> (root / <code>DevSecOps2024!</code>).</li>
+  <li>Arriba a la derecha: <b>➕ → New project → Create blank project</b>.</li>
+  <li>Nombre: <code>mi-app-&lt;tu-nombre&gt;</code>. Visibilidad: <b>Private</b>. <b>Desmarca</b> «Initialize repository with a README». → <b>Create project</b>.</li>
+</ol>
+<p><b>2.2 Generar un Personal Access Token (PAT):</b> el envío de código por HTTPS necesita un token, no tu contraseña.</p>
+<ol>
+  <li>Avatar (arriba dcha.) → <b>Edit profile → Access Tokens</b>.</li>
+  <li><b>Add new token</b>. Nombre: <code>push-token</code>. Marca los scopes <code>read_repository</code> y <code>write_repository</code>. → <b>Create</b>.</li>
+  <li><b>Copia el token</b> (empieza por <code>glpat-</code>). No se vuelve a mostrar.</li>
+</ol>
+<div class="callout info"><b>¿Qué es un token?</b> Es una credencial temporal y con permisos limitados. En vez de usar tu contraseña
+(que da acceso a todo), generas un token que solo puede hacer lo que necesitas (aquí: subir código). Es una buena práctica
+de seguridad que verás repetirse con SonarQube y DefectDojo.</div>
+
+<h3><span class="num">3</span>Sube tu código a GitLab</h3>
+<pre><code>cd mi-app-devsecops
+git init -b main
+git add .
+git config user.email "alumno@lab.local"
+git config user.name  "Alumno"
+git commit -m "App vulnerable inicial"
+
+# Pega TU token en la URL (reemplaza &lt;TU-PAT&gt;):
+git remote add origin http://root:&lt;TU-PAT&gt;@localhost:8929/root/mi-app-tunombre.git
+git push -u origin main</code></pre>
+<p>Refresca tu proyecto en GitLab: ya está tu código. <b>Aún no corre nada</b> — todavía falta darle al pipeline las llaves
+(tokens) de las herramientas. Eso es lo siguiente.</p>
+
+<h3><span class="num">4</span>Genera el token de análisis de SonarQube</h3>
+<ol>
+  <li>Entra a <b>http://localhost:9000</b> (admin / <code>DevSecOps2024!</code>).</li>
+  <li>Avatar «A» (arriba dcha.) → <b>My Account → Security</b>.</li>
+  <li>En <b>Generate Tokens</b>: Name = <code>token-ci</code>, Type = <b>User Token</b> → <b>Generate</b>.</li>
+  <li><b>Copia el token</b> (empieza por <code>squ_</code>).</li>
+</ol>
+<p class="small">Este token permitirá que el job de SonarQube publique el análisis de tu código en el servidor.</p>
+
+<h3><span class="num">5</span>Obtén la API key de DefectDojo</h3>
+<p>Puedes hacerlo por la interfaz o por API (practica la API, es más «DevSecOps»):</p>
+<pre><code>curl -s -X POST http://localhost:8080/api/v2/api-token-auth/ \
+  --data-urlencode "username=admin" \
+  --data-urlencode "password=DevSecOps2024!"
+# Respuesta:  {"token":"xxxxxxxxxxxx..."}   ← copia ese valor</code></pre>
+<p class="small">Con esta API key, el último job del pipeline importará automáticamente todos los reportes a DefectDojo.</p>
+
+<h3><span class="num">6</span>Conecta todo: variables CI/CD del proyecto</h3>
+<p>Aquí es donde el pipeline recibe las «llaves». En tu proyecto de GitLab:
+<b>Settings → CI/CD → Variables → Add variable</b>, y añade estas cinco:</p>
+<table>
+  <tr><th>Key (nombre)</th><th>Value (valor)</th><th>Masked</th></tr>
+  <tr><td><code>SONAR_HOST_URL</code></td><td><code>http://devsecops-sonarqube:9000</code></td><td>No</td></tr>
+  <tr><td><code>SONAR_TOKEN</code></td><td>el <code>squ_...</code> del paso 4</td><td><b>Sí</b></td></tr>
+  <tr><td><code>DEFECTDOJO_URL</code></td><td><code>http://devsecops-defectdojo:8081</code></td><td>No</td></tr>
+  <tr><td><code>DEFECTDOJO_API_KEY</code></td><td>la key del paso 5</td><td><b>Sí</b></td></tr>
+  <tr><td><code>DAST_TARGET</code></td><td><code>http://devsecops-juiceshop:3000</code></td><td>No</td></tr>
+</table>
+<div class="callout tip"><b>Buena práctica:</b> los tokens (secretos) van aquí como variables <b>enmascaradas</b> (Masked),
+<b>nunca</b> escritos dentro del <code>.gitlab-ci.yml</code>. Así no acaban expuestos en tu repositorio. El pipeline los
+lee como <code>${SONAR_TOKEN}</code>, etc.</div>
+
+<h3><span class="num">7</span>Entiende el pipeline (<code>.gitlab-ci.yml</code>)</h3>
+<p>Este archivo, en la raíz de tu repo, define las 7 etapas. Un fragmento clave:</p>
+<pre><code>stages: [secrets, sast, sca, build, container, dast, report]
+
+secret_scanning:        # 1) busca secretos con Gitleaks
+  stage: secrets
+  image: ghcr.io/gitleaks/gitleaks:v8.18.4
+  script:
+    - gitleaks detect --source . --report-format json \
+        --report-path gitleaks-report.json --verbose
+  allow_failure: true   # si ENCUENTRA secretos, avisa pero no bloquea</code></pre>
+<p>Cosas que debes entender del pipeline:</p>
+<ul>
+  <li><b>Cada etapa usa una imagen distinta</b> (la herramienta empaquetada en Docker). GitLab la descarga y ejecuta el <code>script</code>.</li>
+  <li><b><code>allow_failure: true</code></b> hace que, si una herramienta encuentra problemas, el job se ponga «naranja»
+      (aviso) pero el pipeline continúe. Así vemos <b>todos</b> los hallazgos de todas las etapas.</li>
+  <li>El job de <b>ZAP</b> incluye <code>mkdir -p /zap/wrk</code> antes de escanear (si no, no genera el reporte).</li>
+  <li>El job de <b>report</b> envía cada reporte a DefectDojo con <code>product_type_name</code> para que cree el producto solo.</li>
+</ul>
+
+<h3><span class="num">8</span>Dispara el pipeline con un push</h3>
+<pre><code>git add .gitlab-ci.yml
+git commit -m "Anade pipeline DevSecOps"
+git push</code></pre>
+<p>Ve a tu proyecto → <b>Build → Pipelines</b>. Verás las 7 etapas ejecutándose en cadena, <b>solo por haber hecho push</b>.
+Haz clic en cada job para leer su log en tiempo real.</p>
+<div class="callout info"><b>¿Por qué <code>secret_scanning</code> sale «naranja/failed»?</b> Porque <b>encontrar</b> secretos hace que
+Gitleaks devuelva error — y eso es <b>lo que queremos</b>. Con <code>allow_failure: true</code>, el pipeline sigue. No es un
+fallo del lab: es la herramienta haciendo su trabajo.</div>
+
+<h3><span class="num">9</span>Interpreta los resultados (cierra el ciclo)</h3>
+<ol>
+  <li><b>SonarQube</b> (localhost:9000) → tu proyecto: vulnerabilidades del código (SQLi, MD5, command injection…).</li>
+  <li><b>DefectDojo</b> (localhost:8080) → producto <b>«DevSecOps Lab»</b>: <b>todos</b> los hallazgos (Gitleaks + Trivy + ZAP)
+      clasificados por severidad (Critical / High / Medium / Low / Info).</li>
+  <li>Compara: ¿qué encontró cada herramienta? ¿Qué capa cubre cada una? Ahí entiendes por qué se necesitan todas.</li>
+</ol>
+
+<h2>4. Reto final: de «aviso» a «bloqueo» (Quality Gate)</h2>
+<p>Un pipeline que solo avisa no impide desplegar código inseguro. Conviértelo en un control que <b>bloquee</b>:</p>
+<ol>
+  <li>En <code>.gitlab-ci.yml</code>, en el job <code>secret_scanning</code>, cambia <code>allow_failure: true</code> por <code>false</code>.</li>
+  <li><code>git commit -am "quality gate" &amp;&amp; git push</code>.</li>
+  <li>Observa: ahora, si hay secretos, el pipeline se pone <b>ROJO</b> y (con Merge Requests) <b>impediría fusionar</b> el código.</li>
+</ol>
+<p><b>Extra:</b> corrige una vulnerabilidad real (quita los secretos de <code>app.py</code> o parametriza la consulta SQL),
+vuelve a pushear y comprueba que el hallazgo <b>desaparece</b>. Acabas de vivir el ciclo completo: detectar → corregir → verificar.</p>
+
+<h2>5. Glosario rápido</h2>
+<table>
+  <tr><th>Término</th><th>Significado</th></tr>
+  <tr><td><b>CI/CD</b></td><td>Integración/Entrega Continua: automatizar build, pruebas y despliegue en cada cambio.</td></tr>
+  <tr><td><b>Pipeline</b></td><td>Secuencia automática de jobs que se ejecuta ante un evento (aquí, un <code>git push</code>).</td></tr>
+  <tr><td><b>Runner</b></td><td>El «motor» que ejecuta los jobs del pipeline. Sin runner online, el pipeline queda en «pending».</td></tr>
+  <tr><td><b>Shift-Left</b></td><td>Adelantar la seguridad al inicio del ciclo (en el push), no al final (producción).</td></tr>
+  <tr><td><b>SAST / DAST</b></td><td>Análisis estático (del código) / dinámico (de la app corriendo).</td></tr>
+  <tr><td><b>SCA</b></td><td>Software Composition Analysis: analizar las dependencias/librerías de terceros.</td></tr>
+  <tr><td><b>CVE</b></td><td>Identificador público de una vulnerabilidad conocida (p. ej. CVE-2020-14343).</td></tr>
+  <tr><td><b>Quality Gate</b></td><td>Umbral que, si no se cumple, <b>bloquea</b> la entrega (falla el pipeline).</td></tr>
+</table>
+
+<h2>6. Si algo no funciona</h2>
+<ul>
+  <li><b>El pipeline se queda en «pending»:</b> no hay runner disponible. Avisa al instructor (revisa <b>Admin → CI/CD → Runners</b>).</li>
+  <li><b>El job de SonarQube/DefectDojo falla con error de token:</b> revisa que copiaste bien las variables del paso 6
+      (sin espacios) y que las URLs internas son <code>devsecops-...</code>, no <code>localhost</code>.</li>
+  <li><b>No ves hallazgos en DefectDojo:</b> abre el job <code>report_defectdojo</code> y mira los códigos HTTP; deben ser 201.</li>
+</ul>
+
+<div class="callout tip" style="margin-top:24px"><b>¡Lo lograste!</b> Montaste, de punta a punta, un pipeline que automatiza la
+seguridad de una aplicación. Este es exactamente el flujo que usan los equipos reales para no depender de revisiones manuales.
+Ahora la seguridad viaja <b>con</b> el código, en cada push.</div>
+
+<p class="small" style="margin-top:20px; text-align:center;">Academia de Ciberseguridad · Laboratorio DevSecOps · Manual del Alumno</p>
+
+</body>
+</html>
