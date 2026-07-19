@@ -2,7 +2,9 @@
 #  DevSecOps Lab - Docker Compose
 #  Entorno completo para prácticas de seguridad en el pipeline CI/CD
 #
-#  Optimizado para servidores con 8 GB de RAM
+#  Recomendado: 16 GB de RAM (GitLab 6G + SonarQube 2.5G + DefectDojo + jobs).
+#  NOTA: los límites de memoria NO deben ahogar a GitLab: con 3G se satura al
+#  generar el PAT (gitlab-rails runner) y tira 502. Por eso GitLab está en 6G.
 #  Uso: docker compose up -d
 ###############################################################################
 
@@ -48,7 +50,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 3G
+          memory: 6G
         reservations:
           memory: 2G
     networks:
@@ -104,13 +106,13 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1536M
+          memory: 2560M
         reservations:
           memory: 1G
     networks:
       - devsecops-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9000/api/system/status | grep -q UP || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/api/system/status | grep -q UP || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
@@ -143,7 +145,31 @@ services:
 
   # ===========================================================
   # DefectDojo - Gestión de Vulnerabilidades
+  #
+  # ⚠️ La imagen defectdojo-django NO se auto-inicializa. Requiere:
+  #   - defectdojo-redis        broker de Celery (OBLIGATORIO: el uwsgi
+  #                             espera al broker antes de arrancar)
+  #   - defectdojo-db           PostgreSQL
+  #   - defectdojo-initializer  corre migraciones + crea el admin y TERMINA
+  #   - defectdojo              uwsgi (sirve HTTP en :8081)
+  #   - defectdojo-celeryworker procesa imports/dedup en segundo plano
+  #
+  # DD_SECRET_KEY y DD_CREDENTIAL_AES_256_KEY DEBEN ser idénticas en los
+  # tres contenedores django, o los datos cifrados se corrompen.
   # ===========================================================
+  defectdojo-redis:
+    image: redis:7-alpine
+    container_name: devsecops-dojo-redis
+    restart: unless-stopped
+    volumes:
+      - defectdojo-redis-data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - devsecops-net
+
   defectdojo-db:
     image: postgres:15-alpine
     container_name: devsecops-dojo-db
@@ -161,12 +187,15 @@ services:
     networks:
       - devsecops-net
 
-  defectdojo:
+  # Initializer: aplica migraciones y crea el usuario admin, luego sale (exit 0).
+  defectdojo-initializer:
     image: defectdojo/defectdojo-django:latest
-    container_name: devsecops-defectdojo
-    restart: unless-stopped
+    container_name: devsecops-dojo-initializer
+    restart: "no"
     depends_on:
-      - defectdojo-db
+      defectdojo-db:
+        condition: service_started
+    entrypoint: ["/entrypoint-initializer.sh"]
     environment:
       DD_DATABASE_ENGINE: django.db.backends.postgresql
       DD_DATABASE_HOST: defectdojo-db
@@ -176,16 +205,76 @@ services:
       DD_DATABASE_PASSWORD: defectdojo
       DD_SECRET_KEY: "devsecops-lab-secret-key-change-in-production"
       DD_CREDENTIAL_AES_256_KEY: "devsecops-lab-aes-key-change-prod"
+      DD_INITIALIZE: "true"
       DD_ADMIN_USER: admin
       DD_ADMIN_PASSWORD: ${DD_ADMIN_PASSWORD:-DevSecOps2024!}
       DD_ADMIN_MAIL: admin@devsecops.local
+      DD_ADMIN_FIRST_NAME: Admin
+      DD_ADMIN_LAST_NAME: Lab
+    networks:
+      - devsecops-net
+
+  defectdojo:
+    image: defectdojo/defectdojo-django:latest
+    container_name: devsecops-defectdojo
+    restart: unless-stopped
+    depends_on:
+      defectdojo-initializer:
+        condition: service_completed_successfully
+      defectdojo-db:
+        condition: service_started
+      defectdojo-redis:
+        condition: service_started
+    entrypoint: ["/entrypoint-uwsgi.sh"]
+    environment:
+      DD_DATABASE_ENGINE: django.db.backends.postgresql
+      DD_DATABASE_HOST: defectdojo-db
+      DD_DATABASE_PORT: "5432"
+      DD_DATABASE_NAME: defectdojo
+      DD_DATABASE_USER: defectdojo
+      DD_DATABASE_PASSWORD: defectdojo
+      DD_CELERY_BROKER_URL: redis://defectdojo-redis:6379/0
+      DD_SECRET_KEY: "devsecops-lab-secret-key-change-in-production"
+      DD_CREDENTIAL_AES_256_KEY: "devsecops-lab-aes-key-change-prod"
+      DD_INITIALIZE: "false"
       DD_ALLOWED_HOSTS: "*"
     ports:
       - "${DEFECTDOJO_PORT:-8080}:8081"
     deploy:
       resources:
         limits:
+          memory: 1G
+        reservations:
           memory: 512M
+    networks:
+      - devsecops-net
+
+  defectdojo-celeryworker:
+    image: defectdojo/defectdojo-django:latest
+    container_name: devsecops-dojo-celeryworker
+    restart: unless-stopped
+    depends_on:
+      defectdojo-initializer:
+        condition: service_completed_successfully
+      defectdojo-db:
+        condition: service_started
+      defectdojo-redis:
+        condition: service_started
+    entrypoint: ["/entrypoint-celery-worker.sh"]
+    environment:
+      DD_DATABASE_ENGINE: django.db.backends.postgresql
+      DD_DATABASE_HOST: defectdojo-db
+      DD_DATABASE_PORT: "5432"
+      DD_DATABASE_NAME: defectdojo
+      DD_DATABASE_USER: defectdojo
+      DD_DATABASE_PASSWORD: defectdojo
+      DD_CELERY_BROKER_URL: redis://defectdojo-redis:6379/0
+      DD_SECRET_KEY: "devsecops-lab-secret-key-change-in-production"
+      DD_CREDENTIAL_AES_256_KEY: "devsecops-lab-aes-key-change-prod"
+    deploy:
+      resources:
+        limits:
+          memory: 768M
     networks:
       - devsecops-net
 
@@ -287,6 +376,33 @@ services:
       retries: 5
       start_period: 60s
 
+  # ===========================================================
+  # GitLab Runner - Motor de ejecución del pipeline CI/CD
+  # Es la pieza que ejecuta AUTOMÁTICAMENTE cada job del
+  # .gitlab-ci.yml cuando el dev hace push a GitLab.
+  #
+  # Executor: docker (cada job corre en su propia imagen).
+  # Monta el socket de Docker para poder construir imágenes y
+  # escanear contenedores (Trivy image). Se une a devsecops-net
+  # para alcanzar a sonarqube, zap, defectdojo y juiceshop por
+  # nombre de contenedor.
+  # ===========================================================
+  gitlab-runner:
+    image: gitlab/gitlab-runner:latest
+    container_name: devsecops-gitlab-runner
+    restart: unless-stopped
+    depends_on:
+      - gitlab
+    volumes:
+      - gitlab-runner-config:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - devsecops-net
+
 # ===========================================================
 # Volúmenes persistentes
 # ===========================================================
@@ -297,15 +413,21 @@ volumes:
   sonarqube-logs:
   zap-data:
   defectdojo-db-data:
+  defectdojo-redis-data:
   prometheus-data:
   grafana-data:
   jenkins-home:
+  gitlab-runner-config:
 
 # ===========================================================
 # Red del laboratorio
+# El nombre fijo (name: devsecops-net) hace que el registro del
+# runner sea determinista: los jobs se conectan a "devsecops-net"
+# sin importar el nombre del proyecto de docker compose.
 # ===========================================================
 networks:
   devsecops-net:
+    name: devsecops-net
     driver: bridge
     ipam:
       config:

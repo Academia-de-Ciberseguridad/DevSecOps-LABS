@@ -1,0 +1,237 @@
+###############################################################################
+#  DevSecOps Pipeline - .gitlab-ci.yml
+#
+#  Este archivo es el CORAZÓN de la automatización.
+#  En cuanto un desarrollador hace `git push` a GitLab, el GitLab Runner
+#  detecta este fichero y ejecuta TODAS las validaciones de seguridad en
+#  cadena, de forma automática, sin intervención manual.
+#
+#  Flujo (Shift-Left Security):
+#
+#    push ─▶ secrets ─▶ sast ─▶ sca ─▶ build ─▶ container ─▶ dast ─▶ report
+#            Gitleaks  SonarQube Trivy  Docker  Trivy img   ZAP    DefectDojo
+#
+#  Cada job genera un reporte (artifact) y, al final, el job `report` los
+#  centraliza automáticamente en DefectDojo para su gestión.
+#
+#  ── Variables CI/CD requeridas (Settings ▸ CI/CD ▸ Variables) ──
+#    SONAR_HOST_URL        http://devsecops-sonarqube:9000
+#    SONAR_TOKEN           (token generado en SonarQube)         [masked]
+#    DEFECTDOJO_URL        http://devsecops-defectdojo:8081
+#    DEFECTDOJO_API_KEY    (API key de DefectDojo)               [masked]
+#    DAST_TARGET           http://devsecops-juiceshop:3000       (objetivo DAST)
+#
+#  Nota didáctica: los jobs de análisis usan `allow_failure: true`, de modo
+#  que si una herramienta ENCUENTRA vulnerabilidades el job se marca en
+#  naranja (aviso) pero el pipeline continúa y podemos ver TODOS los
+#  hallazgos. En el paso 8 del manual se explica cómo convertirlos en un
+#  "quality gate" que BLOQUEE el merge (allow_failure: false).
+###############################################################################
+
+stages:
+  - secrets
+  - sast
+  - sca
+  - build
+  - container
+  - dast
+  - report
+
+variables:
+  # Imagen que construiremos y escanearemos. Tag único por commit.
+  IMAGE_NAME: "devsecops-sample:$CI_COMMIT_SHORT_SHA"
+  # Valores por defecto (se pueden sobre-escribir en Settings ▸ CI/CD).
+  DAST_TARGET: "http://devsecops-juiceshop:3000"
+  DEFECTDOJO_PRODUCT: "DevSecOps Lab"
+
+# ===========================================================
+# 1) SECRET SCANNING  ▸  Gitleaks
+#    Busca credenciales/tokens hardcodeados en el código.
+# ===========================================================
+secret_scanning:
+  stage: secrets
+  image:
+    # Imagen oficial y fijada (zricethezav está deprecado). 'detect' es válido en 8.18.4.
+    name: ghcr.io/gitleaks/gitleaks:v8.18.4
+    entrypoint: [""]
+  script:
+    - echo "🔎 Buscando secretos hardcodeados con Gitleaks..."
+    - gitleaks detect --source . --report-format json --report-path gitleaks-report.json --verbose
+  artifacts:
+    when: always
+    paths:
+      - gitleaks-report.json
+    expire_in: 1 week
+  allow_failure: true
+
+# ===========================================================
+# 2) SAST  ▸  SonarQube
+#    Análisis estático del código fuente. Los resultados se
+#    publican en el servidor SonarQube (http://<IP>:9000).
+# ===========================================================
+sast_sonarqube:
+  stage: sast
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  script:
+    - echo "🧠 Analizando código con SonarQube (SAST)..."
+    - sonar-scanner
+      -Dsonar.host.url="${SONAR_HOST_URL}"
+      -Dsonar.token="${SONAR_TOKEN}"
+      -Dsonar.qualitygate.wait=false
+  allow_failure: true
+
+# ===========================================================
+# 3) SCA  ▸  Trivy (dependencias / filesystem)
+#    Escanea requirements.txt en busca de librerías con CVEs.
+# ===========================================================
+sca_dependencies:
+  stage: sca
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - echo "📦 Escaneando dependencias con Trivy (SCA)..."
+    # Tabla legible en el log del job
+    - trivy fs --scanners vuln --severity HIGH,CRITICAL --no-progress .
+    # Reporte JSON para importar a DefectDojo
+    - trivy fs --scanners vuln --format json --output trivy-fs-report.json --no-progress .
+  artifacts:
+    when: always
+    paths:
+      - trivy-fs-report.json
+    expire_in: 1 week
+  allow_failure: true
+
+# ===========================================================
+# 4) BUILD  ▸  Docker
+#    Construye la imagen de la aplicación. Usa el socket de
+#    Docker montado en el runner (ver docker-compose.yml).
+# ===========================================================
+build_image:
+  stage: build
+  image: docker:cli
+  script:
+    - echo "🐳 Construyendo imagen ${IMAGE_NAME}..."
+    - docker build -t "${IMAGE_NAME}" .
+  # Resiliencia: si el build falla, que NO tumbe container/dast/report.
+  # Así DefectDojo recibe igualmente los hallazgos de las demás etapas.
+  allow_failure: true
+
+# ===========================================================
+# 5) CONTAINER SCANNING  ▸  Trivy (imagen)
+#    Escanea el sistema operativo y paquetes de la imagen ya
+#    construida.
+# ===========================================================
+container_scanning:
+  stage: container
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - echo "🔍 Escaneando la imagen ${IMAGE_NAME} con Trivy..."
+    - trivy image --severity HIGH,CRITICAL --no-progress "${IMAGE_NAME}"
+    - trivy image --format json --output trivy-image-report.json --no-progress "${IMAGE_NAME}"
+  artifacts:
+    when: always
+    paths:
+      - trivy-image-report.json
+    expire_in: 1 week
+  allow_failure: true
+
+# ===========================================================
+# 6) DAST  ▸  OWASP ZAP (baseline)
+#    Ataca la aplicación en ejecución (DAST_TARGET). Por
+#    defecto apunta a Juice Shop, que siempre está levantada.
+#    zap-baseline.py levanta su propio ZAP dentro del job.
+# ===========================================================
+dast_zap:
+  stage: dast
+  image:
+    name: ghcr.io/zaproxy/zaproxy:stable
+    entrypoint: [""]
+  variables:
+    # ZAP necesita escribir en /zap/wrk; lo apuntamos al workspace.
+    ZAP_WRK: "${CI_PROJECT_DIR}"
+  script:
+    - echo "🕷️  DAST con OWASP ZAP contra ${DAST_TARGET}..."
+    # zap-baseline exige que /zap/wrk EXISTA (comprueba os.path.exists); si no,
+    # imprime "'/zap/wrk' is not mounted", vuelca el usage y aborta. Dentro del
+    # runner Docker ese dir no existe, así que lo creamos y ZAP escribe ahí.
+    - mkdir -p /zap/wrk
+    - cd /zap
+    # -I: no devolver fallo por warnings | -x: reporte XML (lo entiende DefectDojo).
+    - zap-baseline.py -t "${DAST_TARGET}" -x zap-report.xml -I || true
+    - cp -f /zap/wrk/zap-report.xml "${CI_PROJECT_DIR}/zap-report.xml" 2>/dev/null && echo "✅ reporte ZAP copiado al workspace" || echo "⚠️ ZAP no generó reporte"
+  artifacts:
+    when: always
+    paths:
+      - zap-report.xml
+    expire_in: 1 week
+  allow_failure: true
+
+# ===========================================================
+# 7) REPORT  ▸  Importar TODO a DefectDojo (automático)
+#    Consolida los reportes de Gitleaks, Trivy (fs+image) y ZAP
+#    en DefectDojo usando su API (auto_create_context crea el
+#    producto y el engagement solos).
+# ===========================================================
+report_defectdojo:
+  stage: report
+  image: alpine:latest
+  dependencies:
+    - secret_scanning
+    - sca_dependencies
+    - container_scanning
+    - dast_zap
+  before_script:
+    - apk add --no-cache curl >/dev/null
+  script:
+    - |
+      echo "📊 Importando hallazgos a DefectDojo..."
+      ENGAGEMENT="Pipeline #${CI_PIPELINE_ID} (${CI_COMMIT_REF_NAME})"
+
+      import_report () {
+        SCAN_TYPE="$1"; FILE="$2"
+        if [ ! -f "$FILE" ]; then
+          echo "  ⏭️  $FILE no existe, se omite $SCAN_TYPE"; return 0
+        fi
+        echo "  ⬆️  Importando '$SCAN_TYPE' desde $FILE"
+        HTTP=$(curl -s -o /tmp/dd_resp.json -w "%{http_code}" -X POST \
+          "${DEFECTDOJO_URL}/api/v2/import-scan/" \
+          -H "Authorization: Token ${DEFECTDOJO_API_KEY}" \
+          -F "scan_type=${SCAN_TYPE}" \
+          -F "file=@${FILE}" \
+          -F "product_type_name=DevSecOps" \
+          -F "product_name=${DEFECTDOJO_PRODUCT}" \
+          -F "engagement_name=${ENGAGEMENT}" \
+          -F "auto_create_context=true" \
+          -F "active=true" -F "verified=false" \
+          -F "minimum_severity=Info" \
+          -F "scan_date=$(date +%F)")
+        # product_type_name es OBLIGATORIO para que auto_create_context pueda
+        # crear el producto la primera vez (si no, DefectDojo responde 400).
+        case "$HTTP" in
+          2*) echo "     -> HTTP $HTTP ✅ importado" ;;
+          *)  echo "     -> HTTP $HTTP ⚠️  respuesta:"; head -c 500 /tmp/dd_resp.json; echo "" ;;
+        esac
+      }
+
+      import_report "Gitleaks Scan" "gitleaks-report.json"
+      import_report "Trivy Scan"    "trivy-fs-report.json"
+      import_report "Trivy Scan"    "trivy-image-report.json"
+      import_report "ZAP Scan"      "zap-report.xml"
+      echo "✅ Importación finalizada. Revisa el producto '${DEFECTDOJO_PRODUCT}' en DefectDojo."
+  allow_failure: true
+
+# ===========================================================
+#  ¿Cómo convertir esto en un QUALITY GATE que BLOQUEE?
+#  Cambia `allow_failure: true` por `false` en los jobs que
+#  quieras que sean bloqueantes (p. ej. secret_scanning), y/o
+#  añade `--exit-code 1` a Trivy. Si el job falla, el pipeline
+#  se marca en rojo y (con merge requests) impide el merge.
+# ===========================================================

@@ -1,0 +1,5 @@
+.lab-credentials
+sample-project/__pycache__/
+*.pyc
+# Datos persistentes de GitLab (bind-mount local del lab)
+data/
