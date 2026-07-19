@@ -238,6 +238,13 @@ services:
       DD_CREDENTIAL_AES_256_KEY: "devsecops-lab-aes-key-change-prod"
       DD_INITIALIZE: "false"
       DD_ALLOWED_HOSTS: "*"
+      # DEBUG=True hace que WhiteNoise sirva los estáticos (CSS/JS) desde el
+      # código (use_finders), sin nginx ni collectstatic. Sin esto el UI sale
+      # "en blanco" (los /static/*.css dan 404). Aceptable para un lab.
+      DD_DEBUG: "True"
+    volumes:
+      # Activa WhiteNoise (extra_settings) para servir CSS/JS sin nginx.
+      - ./config/defectdojo/local_settings.py:/app/docker/extra_settings/local_settings.py:ro
     ports:
       - "${DEFECTDOJO_PORT:-8080}:8081"
     deploy:
