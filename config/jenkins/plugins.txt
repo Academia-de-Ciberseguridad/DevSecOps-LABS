@@ -1,0 +1,41 @@
+# ============================================================
+#  Plugins de Jenkins pre-instalados en la imagen del lab
+#
+#  Se instalan en tiempo de BUILD con `jenkins-plugin-cli`, así el día de la
+#  clase nadie espera 4 minutos a que Jenkins descargue plugins de internet.
+#  Sin versión = última compatible con esta LTS.
+# ============================================================
+
+# --- Núcleo de Pipeline (Jenkinsfile declarativo) ---
+workflow-aggregator
+pipeline-stage-view
+
+# --- Integración con Git / SCM ---
+git
+
+# --- Ejecutar contenedores desde el pipeline (docker.image().inside(), etc.) ---
+docker-workflow
+
+# --- Credenciales: tokens y API keys fuera del Jenkinsfile ---
+credentials-binding
+plain-credentials
+
+# --- Calidad de vida en los logs y la consola ---
+timestamper   # necesario para options { timestamps() }
+ansicolor     # necesario para options { ansiColor('xterm') } — solo a nivel de PIPELINE,
+              # no dentro de un stage (ahí solo valen skipDefaultCheckout, timeout,
+              # retry y timestamps)
+
+# --- Publicar el informe HTML de OWASP ZAP dentro del build ---
+htmlpublisher
+
+# --- Limpieza del workspace ---
+ws-cleanup    # aporta el step cleanWs()
+
+# --- Timeouts en jobs freestyle ---
+# NOTA: `options { timeout(...) }` de los pipelines es del CORE y NO necesita este
+# plugin. Se deja instalado por si alguien crea un job freestyle en clase.
+build-timeout
+
+# --- Seguridad: permisos por usuario (útil si varios alumnos comparten Jenkins) ---
+matrix-auth

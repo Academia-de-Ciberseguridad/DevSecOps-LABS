@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Práctica Jenkins — Guía del Alumno</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 18mm 18mm 18mm;
+    @bottom-center { content: "Práctica Jenkins — Academia de Ciberseguridad"; font-size: 8pt; color: #94a3b8; }
+    @bottom-right  { content: "Pág. " counter(page) " / " counter(pages); font-size: 8pt; color: #94a3b8; }
+  }
+  @page :first { margin: 0; @bottom-center { content: none; } @bottom-right { content: none; } }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #1e293b; font-size: 10.5pt; line-height: 1.5; }
+  h1, h2, h3, h4 { color: #0f172a; line-height: 1.2; }
+  h2 { font-size: 16pt; border-bottom: 3px solid #2563eb; padding-bottom: 4px; margin-top: 26px; page-break-after: avoid; }
+  h3 { font-size: 12.5pt; color: #1d4ed8; margin-top: 18px; margin-bottom: 6px; page-break-after: avoid; }
+  h4 { font-size: 10.8pt; color: #334155; margin-top: 12px; margin-bottom: 4px; page-break-after: avoid; }
+  p { margin: 6px 0; }
+  code { background: #f1f5f9; color: #b91c1c; padding: 1px 5px; border-radius: 4px; font-family: "Consolas", "DejaVu Sans Mono", monospace; font-size: 9pt; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 11px 13px; border-radius: 8px; font-family: "Consolas", "DejaVu Sans Mono", monospace; font-size: 8.6pt; line-height: 1.45; white-space: pre-wrap; page-break-inside: avoid; margin: 8px 0; }
+  pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 9.3pt; page-break-inside: avoid; }
+  th { background: #1e293b; color: #fff; text-align: left; padding: 7px 9px; }
+  td { border: 1px solid #e2e8f0; padding: 6px 9px; vertical-align: top; }
+  tr { page-break-inside: avoid; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .callout { border-radius: 8px; padding: 10px 14px; margin: 12px 0; font-size: 9.8pt; page-break-inside: avoid; }
+  .info { background: #eff6ff; border-left: 5px solid #2563eb; }
+  .tip  { background: #ecfdf5; border-left: 5px solid #10b981; }
+  .warn { background: #fff7ed; border-left: 5px solid #f59e0b; }
+  .stop { background: #fef2f2; border-left: 5px solid #ef4444; }
+  .why  { background: #faf5ff; border-left: 5px solid #7c3aed; }
+  .callout b { color: #0f172a; }
+  ul, ol { margin: 6px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  .cover { height: 297mm; background: linear-gradient(150deg, #0f172a 0%, #1e3a8a 60%, #2563eb 100%); color: #fff; padding: 45mm 22mm; }
+  .cover .kicker { font-size: 12pt; letter-spacing: 3px; text-transform: uppercase; color: #93c5fd; }
+  .cover h1 { color: #fff; font-size: 34pt; margin: 12px 0 4px; line-height: 1.1; }
+  .cover .sub { font-size: 14pt; color: #cbd5e1; margin-top: 8px; }
+  .cover .flow { margin-top: 34px; font-size: 11pt; color: #e2e8f0; line-height: 2; }
+  .cover .badge { display: inline-block; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); border-radius: 20px; padding: 4px 14px; margin: 4px 6px 4px 0; font-size: 9.5pt; }
+  .cover .foot { position: absolute; bottom: 30mm; font-size: 10pt; color: #93c5fd; }
+  .num { display: inline-block; background: #2563eb; color: #fff; min-width: 22px; height: 22px; border-radius: 11px; text-align: center; line-height: 22px; font-size: 10pt; font-weight: 700; margin-right: 6px; padding: 0 6px; }
+  .lvl { background: #0f172a; color: #fff; border-radius: 8px; padding: 9px 14px; margin: 22px 0 10px; page-break-after: avoid; }
+  .lvl b { color: #fff; font-size: 12.5pt; }
+  .lvl .t { float: right; color: #93c5fd; font-size: 9.5pt; font-weight: 600; }
+  .toc li { margin: 5px 0; }
+  a { color: #2563eb; text-decoration: none; }
+  .small { font-size: 8.8pt; color: #64748b; }
+  .pipe { display: flex; flex-wrap: wrap; gap: 5px; margin: 12px 0; page-break-inside: avoid; }
+  .stage { flex: 1 1 0; min-width: 62px; background: #f1f5f9; border: 1px solid #cbd5e1; border-top: 4px solid #2563eb; border-radius: 7px; padding: 7px 5px; text-align: center; font-size: 8pt; }
+  .stage b { display: block; font-size: 8.6pt; color: #0f172a; margin-bottom: 2px; }
+  .stage .tool { color: #2563eb; font-weight: 600; }
+  .ck { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; margin: 10px 0; page-break-inside: avoid; }
+  .ck b { color: #059669; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ PORTADA ═══════════════ -->
+<div class="cover">
+  <div class="kicker">Ciberseguridad · DevSecOps · Sesión 2</div>
+  <h1>Práctica con Jenkins</h1>
+  <div class="sub">De "no sé qué es Jenkins" a un pipeline DevSecOps completo, funcionando y con resultados en DefectDojo.</div>
+  <div class="flow">
+    <span class="badge">Jenkins</span><span class="badge">Pipeline as Code</span>
+    <span class="badge">Gitleaks</span><span class="badge">SonarQube</span>
+    <span class="badge">Trivy</span><span class="badge">OWASP ZAP</span><span class="badge">DefectDojo</span>
+  </div>
+  <div class="flow" style="margin-top:22px; font-size:10.5pt; color:#cbd5e1;">
+    Tres niveles, cada uno con resultado visible. Si te atascas en uno,
+    el siguiente sigue teniendo sentido. Todo lo que necesitas está en este documento.
+  </div>
+  <div class="foot">Academia de Ciberseguridad · Laboratorio DevSecOps</div>
+</div>
+
+<!-- ═══════════════ 1. QUÉ VAS A HACER ═══════════════ -->
+<h2>1. Qué vas a hacer hoy</h2>
+
+<p>En la sesión anterior montaste un pipeline de seguridad en <b>GitLab CI</b>: hacías
+<code>git push</code> y, solo, se ejecutaban siete controles de seguridad. Hoy vas a montar
+<b>exactamente lo mismo</b> con otro orquestador: <b>Jenkins</b>.</p>
+
+<div class="callout why">
+  <b>¿Por qué repetirlo con otra herramienta?</b> Porque lo que de verdad aprendiste no fue GitLab,
+  fueron los <b>conceptos</b>: etapas, artefactos, credenciales, quality gates. Al hacerlo en Jenkins
+  vas a comprobar que esos conceptos viajan contigo. Y porque Jenkins es, con diferencia, el CI/CD que
+  más te vas a encontrar en empresas grandes y en entornos aislados de internet.
+</div>
+
+<h3>Jenkins en cinco líneas</h3>
+<ul>
+  <li><b>Qué es:</b> un servidor de automatización. Ejecuta tareas (<i>jobs</i>) cuando tú (o un evento) se lo pides.</li>
+  <li><b>Qué NO es:</b> no es un escáner de seguridad, ni un repositorio de código. Es <b>quien llama</b> a las herramientas.</li>
+  <li><b>Cómo se le dan órdenes:</b> con un fichero de texto llamado <code>Jenkinsfile</code> que vive en tu repositorio.</li>
+  <li><b>Dónde ejecuta:</b> en <i>agentes</i>. En este laboratorio, en el propio servidor Jenkins.</li>
+  <li><b>Cómo ejecuta herramientas que no tiene instaladas:</b> lanzando <b>contenedores Docker</b>.</li>
+</ul>
+
+<h3>El pipeline que vas a construir</h3>
+<div class="pipe">
+  <div class="stage"><b>1 · Secretos</b><span class="tool">Gitleaks</span></div>
+  <div class="stage"><b>2 · SAST</b><span class="tool">SonarQube</span></div>
+  <div class="stage"><b>3 · SCA</b><span class="tool">Trivy fs</span></div>
+  <div class="stage"><b>4 · Build</b><span class="tool">Docker</span></div>
+  <div class="stage"><b>5 · Imagen</b><span class="tool">Trivy image</span></div>
+  <div class="stage"><b>6 · DAST</b><span class="tool">OWASP ZAP</span></div>
+  <div class="stage"><b>7 · Informe</b><span class="tool">DefectDojo</span></div>
+</div>
+
+<h3>Los tres niveles de la práctica</h3>
+<table>
+  <tr><th style="width:26mm">Nivel</th><th style="width:20mm">Tiempo</th><th>Qué consigues</th></tr>
+  <tr><td><b>Nivel 1</b></td><td>~10 min</td><td>Tu primer job funcionando. Entiendes la interfaz, el log y el ciclo build → resultado.</td></tr>
+  <tr><td><b>Nivel 2</b></td><td>~15 min</td><td>Traes código real desde GitLab usando credenciales y ejecutas un escáner de seguridad de verdad.</td></tr>
+  <tr><td><b>Nivel 3</b></td><td>~15 min</td><td>El pipeline completo, leído desde el repositorio, con resultados en SonarQube y DefectDojo.</td></tr>
+  <tr><td><b>Reto</b></td><td>~5 min</td><td>Conviertes un aviso en un <b>bloqueo</b>: el quality gate.</td></tr>
+</table>
+
+<!-- ═══════════════ 2. ACCESOS ═══════════════ -->
+<h2>2. Accesos y reglas del laboratorio</h2>
+
+<table>
+  <tr><th style="width:34mm">Herramienta</th><th style="width:46mm">URL (tu navegador)</th><th>Usuario / contraseña</th></tr>
+  <tr><td><b>Jenkins</b></td><td><code>http://localhost:8180</code></td><td>el que te dé el instructor</td></tr>
+  <tr><td>GitLab</td><td><code>http://localhost:8929</code></td><td><code>root</code> / <code>DevSecOps2024!</code></td></tr>
+  <tr><td>SonarQube <span class="small">(puede estar apagado)</span></td><td><code>http://localhost:9000</code></td><td><code>admin</code> / <code>DevSecOps2024!</code></td></tr>
+  <tr><td>DefectDojo</td><td><code>http://localhost:8080</code></td><td><code>admin</code> / <code>DevSecOps2024!</code></td></tr>
+  <tr><td>Juice Shop</td><td><code>http://localhost:3000</code></td><td>(es el objetivo del DAST)</td></tr>
+</table>
+<p class="small">Si trabajas contra el servidor del aula y no en tu propia máquina, sustituye
+<code>localhost</code> por la IP que te indique el instructor.</p>
+
+<div class="callout stop">
+  <b>⚠️ Las dos direcciones de cada servicio.</b> Tú entras a las herramientas por
+  <code>localhost:PUERTO</code>. Pero el pipeline se ejecuta <b>dentro de contenedores</b>, y desde ahí
+  <code>localhost</code> es el propio contenedor, no tu máquina. Por eso, <b>dentro del pipeline</b>
+  siempre se usa el <b>nombre del contenedor</b>:
+  <table style="margin-top:6px">
+    <tr><th>Servicio</th><th>URL desde el pipeline</th></tr>
+    <tr><td>GitLab</td><td><code>http://devsecops-gitlab:8929</code></td></tr>
+    <tr><td>SonarQube</td><td><code>http://devsecops-sonarqube:9000</code></td></tr>
+    <tr><td>DefectDojo (API)</td><td><code>http://devsecops-defectdojo:8081</code></td></tr>
+    <tr><td>Juice Shop (objetivo DAST)</td><td><code>http://devsecops-juiceshop:3000</code></td></tr>
+  </table>
+  Si algún día un job te dice <i>"connection refused"</i>, lo primero que debes mirar es esto.
+</div>
+
+<div class="callout info">
+  <b>SonarQube puede estar apagado.</b> El laboratorio va justo de memoria y, con toda la
+  clase lanzando pipelines a la vez, el instructor suele apagarlo. Si es el caso, en el log
+  verás <code>SonarQube no responde → etapa SAST OMITIDA</code> y la etapa saldrá en
+  <b>verde</b>: <b>no es un fallo tuyo</b>, y las otras seis etapas funcionan igual.
+  El instructor lo encenderá al final de la clase para enseñar los resultados.
+</div>
+
+<div class="callout warn">
+  <b>Jenkins es compartido con el resto de la clase.</b> Para no pisaros:
+  <ul style="margin-bottom:0">
+    <li>Pon <b>tu nombre</b> en todo lo que crees: job <code>pipeline-ana</code>, credencial <code>gitlab-cred-ana</code>…</li>
+    <li><b>No borres</b> jobs ni credenciales que no sean tuyos.</li>
+    <li>Si tu build se queda en cola (<i>pending</i>), es que otro compañero está ejecutando. Espera: es normal.</li>
+  </ul>
+</div>
+
+<!-- ═══════════════ 3. TOUR ═══════════════ -->
+<h2>3. Primer contacto: la interfaz de Jenkins</h2>
+
+<p>Entra en <code>http://localhost:8180</code> y haz login. Verás el <b>Dashboard</b>. Antes de tocar nada,
+localiza estas cinco zonas:</p>
+
+<table>
+  <tr><th style="width:46mm">Dónde</th><th>Qué es</th></tr>
+  <tr><td><b>+ New Item</b> <span class="small">(arriba a la izquierda)</span></td><td>Crear un job nuevo. Aquí empezarás en un minuto.</td></tr>
+  <tr><td><b>Lista central</b></td><td>Todos los jobs, con una bola de color: azul/verde = bien, amarillo = con avisos, rojo = falló. El <b>icono del sol/nube</b> es la "meteorología": la tendencia de los últimos builds.</td></tr>
+  <tr><td><b>Build Executor Status</b> <span class="small">(barra izquierda)</span></td><td>Cuántas ejecuciones caben a la vez y cuáles están corriendo ahora mismo.</td></tr>
+  <tr><td><b>Manage Jenkins</b></td><td>Configuración global: plugins, usuarios, <b>Credentials</b> (lo usarás en el Nivel 2).</td></tr>
+  <tr><td><b>Build History</b> <span class="small">(dentro de un job)</span></td><td>Cada ejecución: <code>#1</code>, <code>#2</code>, <code>#3</code>… Cada una guarda su log y sus ficheros.</td></tr>
+</table>
+
+<div class="callout tip">
+  <b>El sitio al que volverás mil veces:</b> dentro de un build, el enlace
+  <b>Console Output</b>. Es el log completo, línea a línea, de todo lo que se ejecutó.
+  Cuando algo falle —y va a fallar—, la respuesta está ahí. No adivines: <b>lee el log</b>.
+</div>
+
+<!-- ═══════════════ NIVEL 1 ═══════════════ -->
+<div class="lvl"><span class="t">≈ 10 minutos</span><b>NIVEL 1 — Tu primer pipeline</b></div>
+
+<p><b>Objetivo:</b> crear un job, ejecutarlo y entender qué te está contando Jenkins.</p>
+
+<h3>Paso 1.1 — Crear el job</h3>
+<ol>
+  <li>En el Dashboard, pulsa <b>+ New Item</b>.</li>
+  <li><b>Enter an item name:</b> escribe <code>pipeline-TUNOMBRE</code> (por ejemplo <code>pipeline-ana</code>).</li>
+  <li>Selecciona el tipo <b>Pipeline</b> (no "Freestyle project").</li>
+  <li>Pulsa <b>OK</b>.</li>
+</ol>
+
+<div class="callout why">
+  <b>¿Por qué "Pipeline" y no "Freestyle"?</b> Un job <i>Freestyle</i> se configura rellenando formularios
+  en la web: es cómodo el primer día e ingobernable el día 100 (no se puede versionar, ni revisar, ni copiar).
+  Un job <i>Pipeline</i> se define en un <b>script</b> que puede vivir en git. Es lo que se usa hoy en día,
+  y es lo que hace que a esto se le llame <b>Pipeline as Code</b>.
+</div>
+
+<h3>Paso 1.2 — Escribir el pipeline</h3>
+<p>Baja hasta la sección <b>Pipeline</b> (al final de la página de configuración). Deja
+<b>Definition: <i>Pipeline script</i></b> y escribe esto en el recuadro:</p>
+
+<pre><code>pipeline {
+    agent any
+
+    stages {
+        stage('Saludo') {
+            steps {
+                echo "Hola, soy el build número ${env.BUILD_NUMBER}"
+                sh 'date'
+                sh 'whoami'
+                sh 'pwd'
+            }
+        }
+        stage('¿Tengo Docker?') {
+            steps {
+                sh 'docker version --format "Servidor Docker: {{.Server.Version}}"'
+            }
+        }
+    }
+}</code></pre>
+
+<p>Pulsa <b>Save</b>.</p>
+
+<h4>Qué significa cada línea</h4>
+<table>
+  <tr><th style="width:44mm">Línea</th><th>Qué hace</th></tr>
+  <tr><td><code>pipeline { }</code></td><td>Abre un pipeline declarativo. Todo va dentro.</td></tr>
+  <tr><td><code>agent any</code></td><td><b>Dónde</b> se ejecuta. <code>any</code> = donde haya sitio libre.</td></tr>
+  <tr><td><code>stages { }</code></td><td>La lista de bloques de trabajo.</td></tr>
+  <tr><td><code>stage('Saludo')</code></td><td>Un bloque con nombre. Aparecerá como una columna en el <i>Stage View</i>.</td></tr>
+  <tr><td><code>steps { }</code></td><td>Las acciones concretas de ese bloque.</td></tr>
+  <tr><td><code>echo "…"</code></td><td>Escribe un mensaje en el log.</td></tr>
+  <tr><td><code>sh 'comando'</code></td><td>Ejecuta un comando de shell de Linux.</td></tr>
+  <tr><td><code>${env.BUILD_NUMBER}</code></td><td>Una variable que Jenkins rellena solo: el número de ejecución.</td></tr>
+</table>
+
+<h3>Paso 1.3 — Lanzarlo y leer el resultado</h3>
+<ol>
+  <li>Pulsa <b>Build Now</b> (menú izquierdo).</li>
+  <li>En <b>Build History</b> aparecerá <b>#1</b>. Haz clic encima.</li>
+  <li>Entra en <b>Console Output</b> y lee el log de arriba abajo.</li>
+</ol>
+
+<div class="ck">
+  <b>✔ Comprueba que entiendes esto:</b>
+  <ul style="margin-bottom:0">
+    <li>El <b>Stage View</b> del job muestra una columna por <code>stage</code>, con el tiempo que tardó cada una.</li>
+    <li><code>whoami</code> devuelve <b>root</b>: los comandos corren como root dentro del contenedor de Jenkins.</li>
+    <li><code>pwd</code> devuelve algo como <code>/var/jenkins_home/workspace/pipeline-tunombre</code>.
+        Eso es tu <b>workspace</b>: la carpeta de trabajo de este job.</li>
+    <li>La segunda etapa demuestra que Jenkins <b>puede hablar con Docker</b>. Ese es el motor que hará
+        todo el trabajo pesado a partir del Nivel 2.</li>
+  </ul>
+</div>
+
+<h3>Paso 1.4 — Rompe algo a propósito (importante)</h3>
+<p>Vuelve a <b>Configure</b>, cambia <code>sh 'date'</code> por <code>sh 'fecha'</code> (que no existe),
+guarda y lanza otra vez.</p>
+<ul>
+  <li>El build sale en <b>rojo</b> 🔴.</li>
+  <li>En el Console Output verás <code>fecha: not found</code> y <code>script returned exit code 127</code>.</li>
+  <li>La etapa <b>'¿Tengo Docker?'</b> <b>no llega a ejecutarse</b>.</li>
+</ul>
+<div class="callout info">
+  <b>Regla fundamental:</b> si un comando devuelve un código de salida distinto de <b>0</b>, el step
+  <code>sh</code> falla, la etapa falla y <b>el pipeline se detiene ahí</b>. Recuérdalo: en el Nivel 3
+  vamos a aprovechar exactamente ese comportamiento para construir un quality gate de seguridad.
+</div>
+<p>Deshaz el cambio (<code>sh 'date'</code>) antes de continuar.</p>
+
+<!-- ═══════════════ NIVEL 2 ═══════════════ -->
+<div class="lvl"><span class="t">≈ 15 minutos</span><b>NIVEL 2 — Código real y un escáner de seguridad</b></div>
+
+<p><b>Objetivo:</b> descargar el código desde GitLab usando una credencial, y pasarle
+un analizador de secretos de verdad.</p>
+
+<h3>Paso 2.1 — Consigue tu token de GitLab (PAT)</h3>
+<p>Jenkins necesita permiso para clonar el repositorio. Ese permiso es un <b>Personal Access Token</b>.
+Si ya creaste uno en la sesión anterior, reutilízalo. Si no:</p>
+<ol>
+  <li>Entra en GitLab (<code>http://localhost:8929</code>).</li>
+  <li>Arriba a la derecha: <b>avatar ▸ Edit profile ▸ Access Tokens</b>.</li>
+  <li><b>Add new token</b>. Nombre: <code>jenkins</code>. Marca los scopes <b><code>read_repository</code></b>
+      (y <code>write_repository</code> si luego quieres subir cambios).</li>
+  <li><b>Create</b> y <b>copia el token</b> (<code>glpat-…</code>). No se vuelve a mostrar.</li>
+</ol>
+
+<h3>Paso 2.2 — Guarda el token en Jenkins como credencial</h3>
+<ol>
+  <li><b>Manage Jenkins</b> ▸ <b>Credentials</b>.</li>
+  <li>En la tabla, haz clic en el <i>store</i> <b>System</b> ▸ <b>Global credentials (unrestricted)</b>.</li>
+  <li><b>+ Add Credentials</b>.</li>
+  <li>Rellena:
+    <table>
+      <tr><th style="width:36mm">Campo</th><th>Valor</th></tr>
+      <tr><td>Kind</td><td><b>Username with password</b></td></tr>
+      <tr><td>Scope</td><td>Global</td></tr>
+      <tr><td>Username</td><td><code>root</code></td></tr>
+      <tr><td>Password</td><td>tu token <code>glpat-…</code></td></tr>
+      <tr><td><b>ID</b></td><td><code>gitlab-cred-TUNOMBRE</code> &nbsp;<span class="small">(este nombre lo usarás en el script)</span></td></tr>
+      <tr><td>Description</td><td>GitLab — TUNOMBRE</td></tr>
+    </table>
+  </li>
+  <li><b>Create</b>.</li>
+</ol>
+
+<div class="callout stop">
+  <b>Esto es el corazón del DevSecOps aplicado a ti mismo.</b> El <code>Jenkinsfile</code> acaba en
+  <b>git</b>: si escribes ahí un token, se lo has regalado a todo el que tenga acceso al repositorio…
+  y queda en el <b>historial para siempre</b>, aunque luego lo borres. Los secretos van
+  <b>siempre</b> en Credentials. Jenkins además los <b>enmascara</b> en el log: verás <code>****</code>.
+</div>
+
+<h3>Paso 2.3 — El pipeline que analiza código real</h3>
+<p>Vuelve a tu job ▸ <b>Configure</b> ▸ sección <b>Pipeline</b>, y sustituye todo el script por este
+(<b>cambia <code>TUNOMBRE</code></b> por el ID real de tu credencial):</p>
+
+<pre><code>pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'http://devsecops-gitlab:8929/root/devsecops-sample.git',
+                    branch: 'main',
+                    credentialsId: 'gitlab-cred-TUNOMBRE'
+                sh 'ls -la'
+            }
+        }
+
+        stage('Buscar secretos') {
+            steps {
+                sh '''
+                    docker run --rm \
+                      -v "$WORKSPACE":/src -w /src \
+                      ghcr.io/gitleaks/gitleaks:v8.18.4 \
+                      detect --source /src \
+                             --report-format json \
+                             --report-path /src/gitleaks-report.json \
+                             --redact --verbose || true
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: '*.json', allowEmptyArchive: true
+        }
+    }
+}</code></pre>
+
+<p>Guarda y pulsa <b>Build Now</b>.</p>
+
+<h4>Las cuatro cosas que tienes que entender de este script</h4>
+<table>
+  <tr><th style="width:52mm">Fragmento</th><th>Por qué es así</th></tr>
+  <tr>
+    <td><code>http://devsecops-gitlab:8929</code></td>
+    <td>No es <code>localhost</code>. El job corre en la red de contenedores, y allí GitLab se llama
+        <code>devsecops-gitlab</code>.</td>
+  </tr>
+  <tr>
+    <td><code>credentialsId: 'gitlab-cred-…'</code></td>
+    <td>Jenkins busca esa credencial por su ID y la usa. El token <b>no aparece</b> en el script.</td>
+  </tr>
+  <tr>
+    <td><code>docker run … gitleaks</code></td>
+    <td>Jenkins no tiene Gitleaks instalado: <b>lanza un contenedor</b> con la herramienta,
+        la usa, y el contenedor desaparece (<code>--rm</code>).</td>
+  </tr>
+  <tr>
+    <td><code>-v "$WORKSPACE":/src</code></td>
+    <td>Le "presta" tu carpeta de trabajo al contenedor de Gitleaks, que la ve como <code>/src</code>.
+        Sin esto, Gitleaks no tendría nada que analizar.</td>
+  </tr>
+  <tr>
+    <td><code>|| true</code></td>
+    <td>Gitleaks devuelve <b>código 1</b> cuando <b>encuentra</b> secretos. Sin este truco, el build
+        se pararía ahí. <b>De momento</b> queremos ver el resultado; en el reto final lo quitaremos.</td>
+  </tr>
+  <tr>
+    <td><code>archiveArtifacts</code></td>
+    <td>Guarda el informe JSON colgado del build, para poder descargarlo después.</td>
+  </tr>
+</table>
+
+<div class="ck">
+  <b>✔ Resultado esperado:</b> en el Console Output, Gitleaks reporta <b>1 hallazgo</b>:
+  la regla <code>aws-access-token</code> en <code>app.py</code>, línea 23
+  (<code>AWS_SECRET = "AKIAIOSFODNN7FAKEFAKE"</code>). En la página del build aparece
+  <b>gitleaks-report.json</b> en la sección de artefactos: descárgalo y ábrelo.
+</div>
+
+<div class="callout why">
+  <b>¿Solo uno? Pero si en <code>app.py</code> hay tres secretos.</b> Exacto, y ahí está la lección.
+  Gitleaks funciona con <b>reglas basadas en patrones conocidos</b>: sabe qué pinta tiene una clave
+  de AWS (<code>AKIA…</code>), un token de GitHub o una clave de Stripe. Pero
+  <code>DATABASE_PASSWORD = "SuperSecret123!"</code> no encaja con ningún patrón reconocible:
+  es una cadena cualquiera. <b>Falso negativo.</b>
+  <br><br>
+  Lo interesante: cuando llegues al Nivel 3 verás que <b>SonarQube SÍ marca esa contraseña</b>
+  (<i>“password” detected here, review this potentially hard-coded credential</i>) — y en cambio
+  SonarQube no ve el token de AWS. <b>Cada herramienta tapa el agujero de la otra.</b> Por eso
+  el pipeline tiene siete etapas y no una.
+</div>
+
+<div class="callout tip">
+  <b>Nota sobre <code>--redact</code>:</b> hace que el log muestre el hallazgo pero
+  <b>no el valor completo</b> del secreto. Si tu herramienta de seguridad escupe secretos en claro
+  en un log que luego lee media empresa, has creado un problema nuevo mientras arreglabas el viejo.
+</div>
+
+<!-- ═══════════════ NIVEL 3 ═══════════════ -->
+<div class="lvl"><span class="t">≈ 15 minutos</span><b>NIVEL 3 — El pipeline DevSecOps completo</b></div>
+
+<p><b>Objetivo:</b> dejar de escribir el pipeline en la web y hacer que Jenkins lo <b>lea del repositorio</b>.
+Ese pipeline ejecuta las siete etapas y manda todo a DefectDojo.</p>
+
+<h3>Paso 3.1 — El token de SonarQube</h3>
+<ol>
+  <li>Entra en SonarQube (<code>http://localhost:9000</code>).</li>
+  <li>Arriba a la derecha: <b>avatar ▸ My Account ▸ Security</b>.</li>
+  <li>En <b>Generate Tokens</b>: nombre <code>jenkins-TUNOMBRE</code>, tipo <b>User Token</b> ▸ <b>Generate</b>.</li>
+  <li>Copia el token (<code>squ_…</code>).</li>
+</ol>
+
+<h3>Paso 3.2 — La API key de DefectDojo</h3>
+<ol>
+  <li>Entra en DefectDojo (<code>http://localhost:8080</code>).</li>
+  <li>Menú del usuario (arriba a la derecha) ▸ <b>API v2 Key</b>. Copia la clave (40 caracteres).</li>
+</ol>
+<p class="small">Alternativa por consola, si prefieres practicar con la API:</p>
+<pre><code>curl -s -X POST http://localhost:8080/api/v2/api-token-auth/ \
+  --data-urlencode "username=admin" \
+  --data-urlencode "password=DevSecOps2024!"</code></pre>
+
+<h3>Paso 3.3 — Guardar las dos como credenciales <i>Secret text</i></h3>
+<p>En <b>Manage Jenkins ▸ Credentials ▸ System ▸ Global credentials ▸ + Add Credentials</b>,
+crea estas dos (tipo <b>Secret text</b>):</p>
+<table>
+  <tr><th style="width:46mm">ID (exacto)</th><th>Secret</th></tr>
+  <tr><td><code>sonar-token</code></td><td>el <code>squ_…</code> del paso 3.1</td></tr>
+  <tr><td><code>defectdojo-api-key</code></td><td>la API key del paso 3.2</td></tr>
+</table>
+
+<div class="callout warn">
+  <b>Estos dos IDs deben ser exactamente esos</b>, porque así es como los busca el
+  <code>Jenkinsfile</code> del repositorio. <b>Si tu instructor ya las ha creado</b> (lo verás en la lista
+  de credenciales), <b>no las dupliques</b>: sáltate este paso.
+</div>
+
+<h3>Paso 3.4 — Que Jenkins lea el pipeline del repositorio</h3>
+<ol>
+  <li>Tu job ▸ <b>Configure</b> ▸ sección <b>Pipeline</b>.</li>
+  <li>Cambia <b>Definition</b> de <i>Pipeline script</i> a <b><i>Pipeline script from SCM</i></b>.</li>
+  <li>Rellena:
+    <table>
+      <tr><th style="width:44mm">Campo</th><th>Valor</th></tr>
+      <tr><td>SCM</td><td><b>Git</b></td></tr>
+      <tr><td>Repository URL</td><td><code>http://devsecops-gitlab:8929/root/devsecops-sample.git</code></td></tr>
+      <tr><td>Credentials</td><td>tu <code>gitlab-cred-TUNOMBRE</code></td></tr>
+      <tr><td>Branches to build</td><td><code>*/main</code></td></tr>
+      <tr><td><b>Script Path</b></td><td><code>Jenkinsfile</code></td></tr>
+    </table>
+  </li>
+  <li><b>Save</b>.</li>
+</ol>
+
+<div class="callout why">
+  <b>Esto es Pipeline as Code de verdad.</b> Jenkins ya no guarda tu receta: la <b>lee del repositorio</b>
+  en cada ejecución. Si alguien cambia el <code>Jenkinsfile</code> y hace push, el pipeline cambia solo —
+  y ese cambio ha pasado por un merge request, con revisión, como cualquier otro código.
+  Es la diferencia entre "automatización que alguien configuró un día" y "automatización auditable".
+</div>
+
+<h3>Paso 3.5 — Lanzarlo</h3>
+<ol>
+  <li>Pulsa <b>Build Now</b>. <b>Esta primera vez</b> Jenkins solo está descubriendo qué parámetros
+      tiene el pipeline, así que puede lanzarse con los valores por defecto.</li>
+  <li>A partir de ahora verás el botón <b>Build with Parameters</b>. Púlsalo y revisa las opciones:
+    <table>
+      <tr><th style="width:56mm">Parámetro</th><th>Qué hace</th></tr>
+      <tr><td><code>GIT_URL</code> / <code>GIT_BRANCH</code></td><td>Qué repositorio y rama analizar.</td></tr>
+      <tr><td><code>GIT_CRED_ID</code></td><td><b>Pon aquí tu <code>gitlab-cred-TUNOMBRE</code></b>.</td></tr>
+      <tr><td><code>RUN_SAST</code></td><td>SonarQube. Déjalo marcado: si está apagado, la etapa se omite sola y no rompe nada.</td></tr>
+      <tr><td><code>RUN_DAST</code></td><td>OWASP ZAP. Tarda 3-5 min: <b>déjalo desmarcado</b> salvo que te sobre tiempo.</td></tr>
+      <tr><td><code>BLOQUEAR_SI_HAY_SECRETOS</code></td><td>El quality gate. De momento, desmarcado.</td></tr>
+    </table>
+  </li>
+  <li><b>Build</b>. Ahora vete al <b>Console Output</b> y <b>quédate mirando</b> cómo pasa por las etapas.</li>
+</ol>
+
+<h3>Paso 3.6 — Qué está pasando en cada etapa</h3>
+<table>
+  <tr><th style="width:34mm">Etapa</th><th style="width:24mm">Herramienta</th><th>Qué busca</th></tr>
+  <tr><td>1 · Secretos</td><td>Gitleaks</td><td>Credenciales escritas a mano en el código y en el historial de git.</td></tr>
+  <tr><td>2 · SAST</td><td>SonarQube</td><td>Fallos en el <b>código fuente</b> sin ejecutarlo: SQL injection, MD5, command injection…</td></tr>
+  <tr><td>3 · SCA</td><td>Trivy (fs)</td><td>CVEs conocidos en las <b>librerías</b> de <code>requirements.txt</code>.</td></tr>
+  <tr><td>4 · Build</td><td>Docker</td><td>Construye la imagen de la aplicación. Si no compila, no hay nada que desplegar.</td></tr>
+  <tr><td>5 · Contenedor</td><td>Trivy (image)</td><td>CVEs del <b>sistema operativo base</b> de la imagen que acabas de construir.</td></tr>
+  <tr><td>6 · DAST</td><td>OWASP ZAP</td><td>Ataca la aplicación <b>en ejecución</b>: cabeceras, XSS, configuraciones inseguras.</td></tr>
+  <tr><td>7 · Informe</td><td>DefectDojo</td><td>Sube <b>todos</b> los informes por API y los consolida en un único panel.</td></tr>
+</table>
+
+<div class="ck">
+  <b>✔ Resultado esperado:</b> el build acaba en <b>🟡 amarillo (UNSTABLE)</b>. <b>Eso es correcto.</b>
+  Amarillo significa "terminé, pero hay hallazgos de seguridad". La aplicación del laboratorio es
+  vulnerable <b>a propósito</b>: si saliera verde, algo estaría mal configurado.
+</div>
+
+<!-- ═══════════════ RETO ═══════════════ -->
+<div class="lvl"><span class="t">≈ 5 minutos</span><b>RETO — De avisar a bloquear: el quality gate</b></div>
+
+<p>Hasta ahora la seguridad <b>informaba</b>. Ahora va a <b>impedir</b>.</p>
+
+<ol>
+  <li>Pulsa <b>Build with Parameters</b> y esta vez <b>marca <code>BLOQUEAR_SI_HAY_SECRETOS</code></b>.</li>
+  <li>Lanza el build y observa:
+    <ul>
+      <li>El build sale en <b>🔴 rojo (FAILURE)</b>.</li>
+      <li>Las etapas siguientes <b>ni siquiera se ejecutan</b>.</li>
+      <li>En el log aparece: <code>🚫 QUALITY GATE: Gitleaks ha encontrado secretos. Pipeline abortado.</code></li>
+    </ul>
+  </li>
+</ol>
+
+<p>Este es el fragmento del <code>Jenkinsfile</code> que lo hace posible:</p>
+<pre><code>int rc = sh(returnStatus: true, script: 'docker run ... gitleaks detect ...')
+
+if (rc == 0) {
+    echo 'Sin secretos'                                  // 🟢 SUCCESS
+} else if (params.BLOQUEAR_SI_HAY_SECRETOS) {
+    error('QUALITY GATE: secretos detectados')           // 🔴 FAILURE — aborta
+} else {
+    unstable('Secretos detectados (solo aviso)')         // 🟡 UNSTABLE — continúa
+}</code></pre>
+
+<div class="callout info">
+  <b>Fíjate en <code>returnStatus: true</code>.</b> Sin eso, <code>sh</code> abortaría el pipeline
+  automáticamente en cuanto Gitleaks devolviera 1, y <b>nunca llegarías a decidir qué hacer</b>.
+  Con <code>returnStatus</code> capturas el código de salida y <b>tú</b> eliges: informar o bloquear.
+  Es exactamente lo mismo que hacías en GitLab CI con <code>allow_failure: true|false</code>.
+</div>
+
+<h3>Cierra el ciclo: arregla la vulnerabilidad</h3>
+<p>Un control que bloquea solo sirve si alguien arregla lo que señala. Hazlo:</p>
+<pre><code># Clona el repo (usa tu PAT)
+git clone http://root:TU_PAT@localhost:8929/root/devsecops-sample.git
+cd devsecops-sample
+git checkout -b fix-secretos          # en una rama, para no tocar main
+
+# Edita app.py y saca el secreto del código:
+#   AWS_SECRET = "AKIAIOSFODNN7FAKEFAKE"
+#   ->  AWS_SECRET = os.environ.get("AWS_SECRET")
+
+git commit -am "fix: sacar los secretos del codigo fuente"
+git push origin fix-secretos</code></pre>
+<p>Vuelve a Jenkins, <b>Build with Parameters</b>, pon <code>GIT_BRANCH</code> =
+<code>fix-secretos</code>, deja <code>BLOQUEAR_SI_HAY_SECRETOS</code> marcado, y lanza.</p>
+
+<div class="callout stop">
+  <b>Sigue en ROJO. Y esto es lo más importante que vas a aprender hoy.</b><br><br>
+  Has quitado el secreto del código, pero Gitleaks no analiza solo el código actual:
+  analiza <b>todo el historial de git</b>. El commit viejo con el token sigue ahí, y seguirá ahí
+  para siempre. En el log verás algo como <code>3 commits scanned … leaks found: 1</code>,
+  apuntando al <b>commit original</b>.
+  <br><br>
+  <b>Un secreto que se ha commiteado alguna vez está quemado.</b> Cualquiera que haya clonado
+  el repo lo tiene. Borrarlo del fichero no lo borra de la historia, ni de los <i>forks</i>, ni de
+  los <i>backups</i>, ni de la caché de GitHub. La única respuesta correcta es
+  <b>rotar la credencial</b>: invalidarla y emitir una nueva.
+</div>
+
+<p>Compruébalo tú mismo. Estos dos comandos analizan <b>exactamente el mismo código</b>:</p>
+<pre><code># Solo el código actual  ->  "no leaks found", código de salida 0
+docker run --rm -v "$PWD":/src ghcr.io/gitleaks/gitleaks:v8.18.4 \
+  detect --source /src --no-git --redact
+
+# El código MÁS el historial  ->  "leaks found: 1", código de salida 1
+docker run --rm -v "$PWD":/src ghcr.io/gitleaks/gitleaks:v8.18.4 \
+  detect --source /src --redact</code></pre>
+
+<div class="callout tip">
+  <b>Acabas de recorrer el ciclo completo de DevSecOps:</b>
+  detectar → bloquear → corregir → <b>descubrir que la corrección no bastaba</b>.
+  Eso último es justamente el motivo de que la seguridad se automatice: para que la
+  herramienta te lo diga en 40 segundos y no un atacante seis meses después.
+</div>
+
+<div class="callout info">
+  <b>¿Y cómo se arregla de verdad?</b> Por este orden: <b>(1) rotar</b> la credencial expuesta —
+  es lo único imprescindible; <b>(2)</b> sacarla del código y llevarla a una variable de entorno o
+  a un gestor de secretos; <b>(3)</b> opcionalmente reescribir el historial
+  (<code>git filter-repo</code>, BFG), sabiendo que eso obliga a todo el equipo a re-clonar y
+  <b>no recupera</b> lo que ya se filtró.
+</div>
+
+<!-- ═══════════════ RESULTADOS ═══════════════ -->
+<h2>4. Dónde se leen los resultados</h2>
+
+<table>
+  <tr><th style="width:34mm">Herramienta</th><th style="width:40mm">Pregunta que responde</th><th>Qué mirar</th></tr>
+  <tr>
+    <td><b>Jenkins</b><br><span class="small">:8180</span></td>
+    <td>¿Pasó o no pasó?</td>
+    <td>El color del build, el tiempo de cada etapa en el <i>Stage View</i>, el <b>Console Output</b>
+        y los artefactos descargables. Si activaste el DAST, verás también la pestaña
+        <b>Informe OWASP ZAP</b>.</td>
+  </tr>
+  <tr>
+    <td><b>SonarQube</b><br><span class="small">:9000</span></td>
+    <td>¿Qué está mal en mi código?</td>
+    <td>Tu proyecto <code>jenkins-pipeline-TUNOMBRE</code>. Mira sobre todo la pestaña
+        <b>Security Hotspots</b>: contraseña hardcodeada, CSRF desactivado, hash débil,
+        imagen que corre como root… Cada uno con su línea exacta y una explicación.
+        <br><span class="small">⚠️ Verás <b>“0 Vulnerabilities”</b> y eso <b>no</b> es un fallo:
+        lee el recuadro de abajo.</span></td>
+  </tr>
+  <tr>
+    <td><b>DefectDojo</b><br><span class="small">:8080</span></td>
+    <td>¿Cuál es mi riesgo total?</td>
+    <td>Producto <b>"DevSecOps Lab"</b> ▸ tu engagement <code>Jenkins · pipeline-tunombre</code>.
+        Todos los hallazgos de todas las herramientas, clasificados por severidad.
+        Cada ejecución añade sus <i>tests</i> al <b>mismo</b> engagement, con el número de build
+        en el título: por eso puedes comparar el "antes" y el "después" de arreglar la vulnerabilidad.
+        <br><span class="small">En las versiones recientes de DefectDojo el menú <b>Products</b>
+        se llama <b>Assets</b> (y <i>Endpoints</i> pasó a <i>Locations</i>). Si no encuentras
+        "Products", busca "Assets": es lo mismo.</span></td>
+  </tr>
+</table>
+
+<div class="callout why">
+  <b>Fíjate en un detalle que lo explica todo.</b> Dentro del producto "DevSecOps Lab" de DefectDojo
+  conviven ahora engagements que vienen de <b>GitLab CI</b> (<code>Pipeline #…</code>) y de
+  <b>Jenkins</b> (<code>Jenkins · …</code>). Dos orquestadores distintos alimentando <b>un mismo panel de
+  riesgo</b>. A la empresa no le importa qué CI usó cada equipo: le importa cuántas vulnerabilidades
+  críticas tiene abiertas. Eso es <b>gestión de vulnerabilidades</b>.
+</div>
+
+<div class="callout stop">
+  <b>SonarQube dice “0 Vulnerabilities”. ¿Está roto?</b> No. Estás usando la
+  <b>edición Community</b> (gratuita), y la detección automática de inyecciones
+  (SQL injection, command injection…) necesita <i>taint analysis</i>: seguir el dato
+  contaminado desde que entra por el usuario hasta que llega a la consulta. Eso es una
+  <b>función de pago</b> (Developer Edition en adelante).
+  <br><br>
+  Lo que sí te da Community son <b>6 Security Hotspots</b>: puntos que un humano debe
+  revisar (la contraseña en el código, el hash MD5, el CSRF desactivado, la imagen
+  corriendo como root). <b>Es un hallazgo del ejercicio, no un error:</b> las herramientas
+  gratuitas cubren una parte, las de pago otra, y ninguna sola es suficiente. Fíjate en
+  que la <code>API_KEY</code> hardcodeada <b>sí</b> la cazó Gitleaks, y los CVEs de las
+  librerías <b>sí</b> los cazó Trivy. Por eso el pipeline tiene siete etapas y no una.
+</div>
+
+<h3>Ejercicio de análisis (contéstalo con tus resultados)</h3>
+<ol>
+  <li>¿Qué encontró <b>solo</b> Gitleaks y ninguna otra herramienta? ¿Por qué?</li>
+  <li>¿Qué encontró <b>solo</b> Trivy? ¿Es un fallo de tu código o de otra persona?</li>
+  <li>SonarQube marca <code>hashlib.md5(...)</code> como hotspot de gravedad <b>baja</b>.
+      ¿Por qué es un problema de seguridad y no simplemente "código antiguo"?
+      ¿Te parece bien esa gravedad?</li>
+  <li>El SQL injection de <code>get_user()</code> <b>no lo encuentra nadie</b> en este pipeline.
+      ¿Qué herramienta o edición harían falta? ¿Qué otro control (revisión de código, tests,
+      WAF) lo compensaría mientras tanto?</li>
+  <li>Si tuvieras que <b>bloquear solo una</b> de las siete etapas en tu empresa mañana, ¿cuál elegirías
+      y con qué argumento se lo venderías al equipo de desarrollo?</li>
+</ol>
+
+<!-- ═══════════════ RETOS EXTRA ═══════════════ -->
+<h2>5. Retos extra (si te sobra tiempo)</h2>
+<ol>
+  <li><b>DAST completo:</b> lanza el build con <code>RUN_DAST</code> marcado y abre la pestaña
+      <b>Informe OWASP ZAP</b> del build. ¿Qué cabeceras de seguridad faltan?</li>
+  <li><b>Trivy bloqueante:</b> en el <code>Jenkinsfile</code>, añade <code>--exit-code 1</code> al
+      comando de Trivy para que los CVEs críticos rompan el build.</li>
+  <li><b>Escaneo nocturno:</b> en <b>Configure ▸ Build Triggers ▸ Build periodically</b> pon
+      <code>H 2 * * *</code>. Ese <code>H</code> significa "a una hora repartida": evita que
+      todos los jobs del mundo se lancen a las 2:00 en punto.</li>
+  <li><b>Tu propio repositorio:</b> copia el <code>Jenkinsfile</code> a <b>tu</b> repo
+      <code>mi-app-tunombre</code> de la sesión anterior, y apunta el job ahí.</li>
+  <li><b>Notificación:</b> añade al bloque <code>post { failure { … } }</code> un <code>echo</code>
+      con el <code>${BUILD_URL}</code>. En producción, ahí es donde iría el aviso a Slack o correo.</li>
+</ol>
+
+<!-- ═══════════════ TROUBLESHOOTING ═══════════════ -->
+<h2>6. Cuando algo falla</h2>
+
+<p><b>Antes de preguntar: abre el Console Output y busca la primera línea en rojo.</b>
+El 90% de los problemas están en esta tabla.</p>
+
+<table>
+  <tr><th style="width:56mm">Síntoma</th><th>Causa y solución</th></tr>
+  <tr>
+    <td>El build se queda en <b>pending</b> / "waiting for next available executor"</td>
+    <td>Hay compañeros ejecutando y no quedan carriles libres. <b>Espera.</b> Míralo en
+        <i>Build Executor Status</i>.</td>
+  </tr>
+  <tr>
+    <td><code>Could not find credentials entry with ID '…'</code></td>
+    <td>El ID de la credencial no coincide con el del script. Revisa mayúsculas, guiones y espacios.
+        Debe ser <b>idéntico</b>.</td>
+  </tr>
+  <tr>
+    <td><code>Authentication failed</code> al clonar</td>
+    <td>El PAT es incorrecto, ha caducado, o le falta el scope <code>read_repository</code>.
+        Genera uno nuevo.</td>
+  </tr>
+  <tr>
+    <td><code>Could not resolve host: localhost</code> o <i>connection refused</i></td>
+    <td>Usaste <code>localhost</code> dentro del pipeline. Cambia a <b>nombre de contenedor</b>
+        (<code>devsecops-gitlab</code>, <code>devsecops-sonarqube</code>…).</td>
+  </tr>
+  <tr>
+    <td>El escáner dice <b>"0 hallazgos"</b> en un código que sabes que es vulnerable</td>
+    <td>Casi siempre el volumen está mal montado y el contenedor analizó una carpeta vacía.
+        Añade <code>sh 'ls -la $WORKSPACE'</code> y, dentro del <code>docker run</code>, un
+        <code>ls /src</code>. <b>Un falso verde es peor que un rojo.</b></td>
+  </tr>
+  <tr>
+    <td><code>docker: command not found</code></td>
+    <td>Estás en un Jenkins sin el cliente de Docker. Avisa al instructor: falta la imagen
+        personalizada del laboratorio.</td>
+  </tr>
+  <tr>
+    <td><code>permission denied … /var/run/docker.sock</code></td>
+    <td>Jenkins no tiene acceso al socket de Docker. Es configuración del laboratorio: avisa al instructor.</td>
+  </tr>
+  <tr>
+    <td>La etapa de SonarQube falla con <code>401</code> o <code>403</code></td>
+    <td>El token <code>sonar-token</code> es inválido o caducado. Genera otro en
+        <i>My Account ▸ Security</i> y actualiza la credencial.</td>
+  </tr>
+  <tr>
+    <td><code>SonarQube no responde → etapa SAST OMITIDA</code></td>
+    <td><b>No es un error.</b> SonarQube está apagado para liberar memoria. La etapa sale
+        en verde y el resto del pipeline continúa. Es una decisión del laboratorio, no
+        de tu código.</td>
+  </tr>
+  <tr>
+    <td>DefectDojo responde <b>HTTP 400</b> al importar</td>
+    <td>Suele ser el nombre del tipo de escaneo o que falta el producto. El <code>Jenkinsfile</code>
+        ya manda <code>product_type_name</code> para crearlo solo; comprueba la API key.</td>
+  </tr>
+  <tr>
+    <td>La etapa de ZAP tarda muchísimo</td>
+    <td>Es normal: un <i>baseline</i> son 3-5 minutos. Si no tienes tiempo, desmarca <code>RUN_DAST</code>.</td>
+  </tr>
+  <tr>
+    <td>El pipeline aborta en <b>Checkout</b> con <code>FATAL: el demonio Docker del HOST no ve $WORKSPACE</code></td>
+    <td>Es una <b>protección deliberada</b>, no un fallo tuyo: el laboratorio está mal montado y los
+        escáneres analizarían una carpeta vacía (saldría "verde" sin haber comprobado nada).
+        Avisa al instructor.</td>
+  </tr>
+  <tr>
+    <td><code>Gitleaks NO pudo ejecutarse (código 125/126/127)</code></td>
+    <td>No es un hallazgo de seguridad: es que la imagen no se pudo descargar o un flag está mal escrito.
+        Mira las líneas anteriores del log.</td>
+  </tr>
+  <tr>
+    <td>No aparece <b>Build with Parameters</b></td>
+    <td>Jenkins registra los parámetros la <b>primera vez</b> que lee el <code>Jenkinsfile</code>.
+        Lanza el job una vez con <b>Build Now</b> y vuelve a mirar.</td>
+  </tr>
+</table>
+
+<!-- ═══════════════ CHULETA ═══════════════ -->
+<h2>7. Chuleta de referencia</h2>
+
+<h3>Estructura de un Jenkinsfile</h3>
+<pre><code>pipeline {
+    agent any                          // dónde se ejecuta
+    options     { timestamps() }       // cómo se comporta el job
+    parameters  { booleanParam(name: 'X', defaultValue: false) }
+    environment { MI_VAR = 'valor' }   // variables para todo el pipeline
+    stages {
+        stage('Nombre') {
+            when  { expression { return params.X } }   // ejecutar solo si…
+            steps { sh 'comando' }
+        }
+    }
+    post {                             // siempre al final
+        always   { archiveArtifacts artifacts: '*.json', allowEmptyArchive: true }
+        success  { echo 'verde'  }
+        unstable { echo 'amarillo' }
+        failure  { echo 'rojo'   }
+    }
+}</code></pre>
+
+<h3>Steps más usados</h3>
+<table>
+  <tr><th style="width:56mm">Step</th><th>Qué hace</th></tr>
+  <tr><td><code>sh 'comando'</code></td><td>Ejecuta shell. Si devuelve ≠ 0, falla la etapa.</td></tr>
+  <tr><td><code>sh(returnStatus: true, script: '…')</code></td><td>Ejecuta y te <b>devuelve</b> el código de salida sin fallar.</td></tr>
+  <tr><td><code>sh(returnStdout: true, script: '…')</code></td><td>Ejecuta y te devuelve la <b>salida de texto</b>.</td></tr>
+  <tr><td><code>echo 'texto'</code></td><td>Escribe en el log.</td></tr>
+  <tr><td><code>git url: '…', branch: '…', credentialsId: '…'</code></td><td>Clona un repositorio.</td></tr>
+  <tr><td><code>withCredentials([string(credentialsId:'x', variable:'V')]) { }</code></td><td>Inyecta un secreto como variable <code>$V</code>.</td></tr>
+  <tr><td><code>archiveArtifacts artifacts: '*.json'</code></td><td>Guarda ficheros en el build.</td></tr>
+  <tr><td><code>error 'mensaje'</code></td><td>Aborta el build en <b>rojo</b>.</td></tr>
+  <tr><td><code>unstable 'mensaje'</code></td><td>Marca el build en <b>amarillo</b> y continúa.</td></tr>
+  <tr><td><code>catchError(buildResult:'UNSTABLE', stageResult:'FAILURE') { }</code></td><td>Si algo falla dentro, no tumba el pipeline.</td></tr>
+</table>
+
+<h3>Variables de entorno útiles</h3>
+<table>
+  <tr><th style="width:44mm">Variable</th><th>Contenido</th></tr>
+  <tr><td><code>$WORKSPACE</code></td><td>Carpeta de trabajo del build.</td></tr>
+  <tr><td><code>$BUILD_NUMBER</code></td><td>Número de ejecución.</td></tr>
+  <tr><td><code>$JOB_NAME</code></td><td>Nombre del job.</td></tr>
+  <tr><td><code>$BUILD_URL</code></td><td>Enlace directo a este build.</td></tr>
+  <tr><td><code>$GIT_COMMIT</code> / <code>$GIT_BRANCH</code></td><td>Commit y rama analizados.</td></tr>
+</table>
+
+<h3>Equivalencias GitLab CI ↔ Jenkins</h3>
+<table>
+  <tr><th style="width:52mm">GitLab CI</th><th style="width:52mm">Jenkins</th><th>Concepto</th></tr>
+  <tr><td><code>.gitlab-ci.yml</code></td><td><code>Jenkinsfile</code></td><td>La receta, en el repo</td></tr>
+  <tr><td><code>stages:</code></td><td><code>stages { }</code></td><td>Bloques del pipeline</td></tr>
+  <tr><td><code>script:</code></td><td><code>steps { sh '…' }</code></td><td>Los comandos</td></tr>
+  <tr><td><code>variables:</code></td><td><code>environment { }</code></td><td>Variables</td></tr>
+  <tr><td>Settings ▸ CI/CD ▸ Variables</td><td>Manage Jenkins ▸ Credentials</td><td>Los secretos</td></tr>
+  <tr><td><code>artifacts:</code></td><td><code>archiveArtifacts</code></td><td>Guardar informes</td></tr>
+  <tr><td><code>allow_failure: true</code></td><td><code>unstable()</code></td><td>Avisar sin bloquear</td></tr>
+  <tr><td><code>allow_failure: false</code></td><td><code>error()</code></td><td>Bloquear (quality gate)</td></tr>
+  <tr><td><code>rules:</code> / <code>only:</code></td><td><code>when { }</code></td><td>Ejecutar condicionalmente</td></tr>
+  <tr><td>GitLab Runner</td><td>Agente / executor</td><td>Quién ejecuta el trabajo</td></tr>
+</table>
+
+<h3>Comillas y secretos: el detalle que casi nadie explica</h3>
+<p>En Groovy, <code>'''…'''</code> (comilla simple) y <code>"""…"""</code> (comilla doble) NO son lo mismo,
+y con secretos la diferencia importa:</p>
+<pre><code># CORRECTO — comillas SIMPLES: la variable la expande el SHELL
+sh '''docker run ... -Dsonar.token="$SONAR_TOKEN" ...'''
+
+# INCORRECTO — comillas DOBLES: Groovy mete el secreto en el texto del script
+#   ANTES de que Jenkins lo vea, y el enmascarado deja de funcionar.
+sh """docker run ... -Dsonar.token=${SONAR_TOKEN} ..."""</code></pre>
+<div class="callout warn">
+  Si Jenkins te avisa con <i>"A secret was passed to sh using Groovy String interpolation,
+  which is insecure"</i>, es exactamente esto: cambia las comillas dobles por simples.
+</div>
+
+<div class="callout tip" style="margin-top:18px">
+  <b>Truco final:</b> en cualquier Jenkins, entra en <code>&lt;URL-de-Jenkins&gt;/pipeline-syntax</code>.
+  Es un generador: eliges un step, rellenas un formulario y te da la línea exacta lista para pegar
+  en tu <code>Jenkinsfile</code>. Es el mejor amigo de quien empieza.
+</div>
+
+</body>
+</html>

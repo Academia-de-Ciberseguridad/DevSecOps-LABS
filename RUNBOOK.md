@@ -56,4 +56,28 @@ git commit -am "cambio" && git push origin main   # dispara un pipeline nuevo
 - El **build** de la app usa `python:3.9-slim` a propósito (las libs viejas vulnerables tienen wheels en 3.9; en 3.11 rompen la compilación).
 - El import a **DefectDojo** requiere `product_type_name` para poder autocrear el producto (si no, HTTP 400 silencioso).
 - **ZAP** (`zap-baseline.py`) exige que exista `/zap/wrk`; el job hace `mkdir -p /zap/wrk` antes de escanear.
-- **Jenkins / Prometheus / Grafana** están definidos en el compose pero no se arrancan (el pipeline no los usa). Para levantarlos: `docker compose up -d jenkins prometheus grafana`.
+- **Prometheus / Grafana** están definidos en el compose pero no se arrancan (el pipeline no los usa). Para levantarlos: `docker compose up -d prometheus grafana`.
+
+## Jenkins (sesión 2 — orquestador alternativo)
+
+```bash
+# Puesta en marcha completa (build + arranque + pre-pull + verificación)
+./scripts/setup-jenkins.sh          # ~5-10 min la primera vez
+
+# Subir el Jenkinsfile al repo de GitLab (necesario para "Pipeline from SCM")
+./scripts/push-jenkinsfile.sh
+
+# Comprobaciones rápidas
+./scripts/setup-jenkins.sh --check      # 7 comprobaciones (~20 s)
+./scripts/setup-jenkins.sh --password   # contraseña inicial de desbloqueo
+```
+
+Jenkins queda en **http://localhost:8180**. Documentación de la sesión:
+`MANUAL-INSTRUCTOR-JENKINS.md` y `docs/jenkins/`.
+
+Notas propias de Jenkins:
+
+- La imagen se **construye** (`config/jenkins/Dockerfile`): la oficial no trae el cliente `docker`, y sin él montar el socket no sirve de nada.
+- `JENKINS_HOME` va como **bind mount con la misma ruta dentro y fuera** (`/var/jenkins_home`). Con un volumen con nombre, `docker run -v "$WORKSPACE":/src` montaría un directorio **vacío** y los escáneres dirían "0 hallazgos".
+- Los jobs comparten el volumen `trivy-cache` para no re-descargar la BD de CVEs por alumno.
+- Credenciales que espera el `Jenkinsfile`: `gitlab-cred` (user+PAT), `sonar-token` y `defectdojo-api-key` (secret text). Sus valores están en `.lab-credentials`.

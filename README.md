@@ -10,6 +10,7 @@ Incluye todas las herramientas necesarias para implementar seguridad en cada fas
 | Herramienta | Tipo | Puerto | Función |
 |-------------|------|--------|---------|
 | **GitLab CE** | SCM + CI/CD | 8929 | Control de versiones y pipeline de integración continua |
+| **Jenkins** | Orquestador CI/CD | 8180 | Alternativa a GitLab CI (sesión 2). Ver `MANUAL-INSTRUCTOR-JENKINS.md` |
 | **SonarQube** | SAST | 9000 | Análisis estático de código fuente |
 | **OWASP ZAP** | DAST | 8090 | Análisis dinámico de aplicaciones en ejecución |
 | **Trivy** | SCA + Container | CLI | Escaneo de dependencias y contenedores |

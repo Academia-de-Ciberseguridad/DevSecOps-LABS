@@ -1,0 +1,488 @@
+// =============================================================================
+//  Jenkinsfile — Pipeline DevSecOps completo
+//
+//  Es EL MISMO pipeline que .gitlab-ci.yml, pero escrito para Jenkins.
+//  Sirve para ver que las herramientas de seguridad no dependen del
+//  orquestador: lo que cambia es la sintaxis y quién ejecuta los jobs.
+//
+//    checkout ─▶ secretos ─▶ SAST ─▶ SCA ─▶ build ─▶ contenedor ─▶ DAST ─▶ informe
+//               Gitleaks   SonarQube Trivy  Docker  Trivy image   ZAP    DefectDojo
+//
+//  ── CÓMO FUNCIONA POR DENTRO ────────────────────────────────────────────────
+//  Jenkins NO tiene las herramientas instaladas. Cada etapa lanza un
+//  CONTENEDOR con la herramienta (`docker run`), usando el socket de Docker
+//  del host que está montado en el contenedor de Jenkins. A eso se le llama
+//  "Docker out of Docker": los contenedores que crea el pipeline son
+//  HERMANOS del de Jenkins, no hijos.
+//
+//  Consecuencia importante: en `-v "$WORKSPACE":/src`, la ruta $WORKSPACE la
+//  interpreta el demonio Docker DEL HOST. Por eso JENKINS_HOME está montado
+//  como bind mount con la MISMA ruta dentro y fuera (/var/jenkins_home).
+//
+//  ── QUÉ NECESITAS ANTES DE EJECUTARLO ───────────────────────────────────────
+//  Credenciales en Jenkins (Manage Jenkins ▸ Credentials ▸ System ▸ Global):
+//    · gitlab-cred          Username with password   root / <tu PAT de GitLab>
+//    · sonar-token          Secret text              squ_...  (token SonarQube)
+//    · defectdojo-api-key   Secret text              API key de DefectDojo
+// =============================================================================
+
+pipeline {
+
+    // `agent any`: ejecuta en cualquier nodo disponible. En este laboratorio
+    // solo existe el nodo "built-in" (el propio contenedor de Jenkins).
+    agent any
+
+    // ── Opciones del job ────────────────────────────────────────────────────
+    options {
+        timestamps()                                    // hora en cada línea del log
+        ansiColor('xterm')                              // colores en la consola
+        timeout(time: 30, unit: 'MINUTES')              // corta si se atasca
+        buildDiscarder(logRotator(numToKeepStr: '10'))  // no llenar el disco del lab
+        disableConcurrentBuilds()                       // un build a la vez por job
+    }
+
+    // ── Parámetros: se piden al pulsar "Build with Parameters" ──────────────
+    //  OJO en la PRIMERA ejecución de un job nuevo: Jenkins todavía no ha leído
+    //  este fichero, así que verás "Build Now" en vez de "Build with Parameters".
+    //  El build SÍ se ejecuta y params.* toma los defaultValue de aquí abajo.
+    //  A partir del build #2 aparece el formulario.
+    //
+    //  REGLA: accede siempre como `params.RUN_DAST` (Groovy). NUNCA como
+    //  `$RUN_DAST` dentro de un `sh`: esas variables de entorno no existen en el
+    //  build #1, y ahí sí tendrías un valor vacío sin darte cuenta.
+    parameters {
+        string(
+            name: 'GIT_URL',
+            defaultValue: 'http://devsecops-gitlab:8929/root/devsecops-sample.git',
+            description: 'Repositorio a analizar. OJO: nombre de contenedor (devsecops-gitlab), no localhost.'
+        )
+        string(
+            name: 'GIT_BRANCH',
+            defaultValue: 'main',
+            description: 'Rama a analizar.'
+        )
+        string(
+            name: 'GIT_CRED_ID',
+            defaultValue: 'gitlab-cred',
+            description: 'ID de la credencial de GitLab. Déjalo VACÍO si el repo es público.'
+        )
+        booleanParam(
+            name: 'RUN_SAST',
+            defaultValue: true,
+            description: 'Ejecutar el análisis estático con SonarQube (~1-2 min).'
+        )
+        booleanParam(
+            name: 'RUN_DAST',
+            defaultValue: false,
+            description: 'Ejecutar OWASP ZAP contra la app en ejecución. Tarda 3-5 min: en clase, actívalo solo si te sobra tiempo.'
+        )
+        booleanParam(
+            name: 'BLOQUEAR_SI_HAY_SECRETOS',
+            defaultValue: false,
+            description: 'QUALITY GATE: si Gitleaks encuentra secretos, ABORTA el pipeline (rojo) en vez de avisar (amarillo).'
+        )
+    }
+
+    // ── Variables de entorno del pipeline ───────────────────────────────────
+    environment {
+        // URLs INTERNAS: contenedor -> contenedor, por nombre. Nunca localhost.
+        SONAR_HOST_URL     = 'http://devsecops-sonarqube:9000'
+        DEFECTDOJO_URL     = 'http://devsecops-defectdojo:8081'
+        DAST_TARGET        = 'http://devsecops-juiceshop:3000'
+        DOCKER_NET         = 'devsecops-net'
+        DEFECTDOJO_PRODUCT = 'DevSecOps Lab'
+    }
+
+    stages {
+
+        // ===================================================================
+        //  0) CHECKOUT — traer el código
+        // ===================================================================
+        stage('Checkout') {
+            steps {
+                // Workspace limpio SIEMPRE. Si no, los informes de un build anterior
+                // seguirían aquí y la etapa 7 los volvería a subir a DefectDojo como
+                // si fueran de este build (p. ej. el escaneo de una imagen que hoy
+                // ni siquiera se construyó). Un hallazgo fantasma es tan malo como
+                // un hallazgo perdido.
+                cleanWs()
+                script {
+                    if (params.GIT_CRED_ID?.trim()) {
+                        git url: params.GIT_URL, branch: params.GIT_BRANCH, credentialsId: params.GIT_CRED_ID
+                    } else {
+                        git url: params.GIT_URL, branch: params.GIT_BRANCH
+                    }
+
+                    // Nombres seguros para Docker y SonarQube derivados del nombre del job.
+                    // Se calculan con `tr` (shell) y no con Groovy para no chocar con el
+                    // sandbox de Jenkins.
+                    env.IMAGE = sh(
+                        returnStdout: true,
+                        script: '''printf '%s' "devsecops-sample:${JOB_NAME}-${BUILD_NUMBER}" \
+                                   | tr -c 'a-zA-Z0-9_.:-' '-' | tr 'A-Z' 'a-z' '''
+                    ).trim()
+
+                    env.SONAR_PROJECT_KEY = sh(
+                        returnStdout: true,
+                        script: '''printf '%s' "jenkins-${JOB_NAME}" | tr -c 'a-zA-Z0-9_.:-' '-' '''
+                    ).trim()
+                }
+                sh '''
+                    echo "Imagen a construir : $IMAGE"
+                    echo "Proyecto Sonar     : $SONAR_PROJECT_KEY"
+                    ls -la
+
+                    # ── GUARDA ANTI "FALSO VERDE" ────────────────────────────
+                    # Todas las etapas hacen `docker run -v "$WORKSPACE":/src`, y esa
+                    # ruta la resuelve el demonio Docker DEL HOST. Si el host no ve
+                    # $WORKSPACE, Docker NO da error: crea y monta un directorio VACÍO.
+                    # Resultado: los escáneres analizan la nada, no encuentran nada y
+                    # el pipeline sale VERDE. En seguridad eso es el peor desenlace
+                    # posible, así que lo comprobamos antes de escanear.
+                    echo canary > "$WORKSPACE/.ws-canary"
+                    if ! docker run --rm -v "$WORKSPACE":/probe alpine:latest test -f /probe/.ws-canary; then
+                        rm -f "$WORKSPACE/.ws-canary"
+                        echo "════════════════════════════════════════════════════════════"
+                        echo "FATAL: el demonio Docker del HOST no ve $WORKSPACE."
+                        echo "Los escáneres analizarían un directorio VACÍO y este"
+                        echo "pipeline saldría verde sin haber comprobado nada."
+                        echo ""
+                        echo "(Si el error de arriba es de descarga de 'alpine:latest',"
+                        echo " el problema es de red, no del montaje.)"
+                        echo ""
+                        echo "Solución: JENKINS_HOME debe ir como bind mount con la MISMA"
+                        echo "ruta dentro y fuera del contenedor, en docker-compose.yml:"
+                        echo "    - /var/jenkins_home:/var/jenkins_home"
+                        echo "(y NO como un volumen con nombre)."
+                        echo "════════════════════════════════════════════════════════════"
+                        exit 1
+                    fi
+                    rm -f "$WORKSPACE/.ws-canary"
+                    echo "✅ El host y Jenkins comparten el workspace: los escáneres verán el código."
+                '''
+            }
+        }
+
+        // ===================================================================
+        //  1) SECRETOS — Gitleaks
+        //     Busca credenciales y tokens escritos a mano en el código y en
+        //     TODO el historial de git.
+        // ===================================================================
+        stage('1 · Secretos (Gitleaks)') {
+            steps {
+                script {
+                    // Gitleaks devuelve 1 cuando ENCUENTRA secretos: eso no es un
+                    // error de ejecución, es un HALLAZGO. Por eso capturamos el
+                    // código de salida en vez de dejar que rompa el pipeline.
+                    int rc = sh(returnStatus: true, script: '''
+                        set -x
+                        docker run --rm \
+                          -v "$WORKSPACE":/src -w /src \
+                          ghcr.io/gitleaks/gitleaks:v8.18.4 \
+                          detect --source /src \
+                                 --report-format json \
+                                 --report-path /src/gitleaks-report.json \
+                                 --redact --verbose
+                    ''')
+
+                    // OJO: Gitleaks devuelve 1 tanto si encuentra secretos como si
+                    // hay un ERROR; y `docker run` devuelve 125/126/127 si la imagen
+                    // o un flag están mal. Distinguirlos evita que el alumno pierda
+                    // media clase depurando un "hallazgo" que en realidad era un
+                    // fallo de ejecución.
+                    boolean hayInforme = fileExists('gitleaks-report.json')
+
+                    if (rc == 0) {
+                        echo '✅ Gitleaks: sin secretos hardcodeados.'
+                    } else if (rc == 1 && hayInforme) {
+                        if (params.BLOQUEAR_SI_HAY_SECRETOS) {
+                            // QUALITY GATE bloqueante = allow_failure:false en GitLab CI
+                            error("🚫 QUALITY GATE: Gitleaks ha encontrado secretos. Pipeline abortado.")
+                        }
+                        // Aviso: build AMARILLO (UNSTABLE), el pipeline continúa.
+                        unstable('⚠️ Gitleaks ha encontrado secretos (modo aviso, no bloquea).')
+                    } else {
+                        error("❌ Gitleaks NO pudo ejecutarse (código ${rc}). Esto NO es un hallazgo de seguridad: " +
+                              "125/127 = problema con 'docker run', 126 = flag desconocido. Revisa el log de arriba.")
+                    }
+                }
+            }
+        }
+
+        // ===================================================================
+        //  2) SAST — SonarQube
+        //     Analiza el CÓDIGO FUENTE sin ejecutarlo y publica en el servidor.
+        // ===================================================================
+        stage('2 · SAST (SonarQube)') {
+            when { expression { return params.RUN_SAST } }
+            steps {
+                script {
+                  // ¿Está SonarQube encendido? En un laboratorio con poca RAM se apaga
+                  // a menudo. Comprobarlo primero evita que el alumno vea una etapa en
+                  // rojo que no tiene NADA que ver con su código, y que pierda tiempo
+                  // depurando el laboratorio en vez de aprender.
+                  int sonarUp = sh(returnStatus: true,
+                                   script: 'curl -sf -m 8 "$SONAR_HOST_URL/api/system/status" >/dev/null')
+                  if (sonarUp != 0) {
+                    echo "ℹ️  SonarQube no responde en ${env.SONAR_HOST_URL} → etapa SAST OMITIDA."
+                    echo "    No es un fallo de tu código: en este laboratorio SonarQube se apaga"
+                    echo "    para liberar memoria. Para encenderlo (desde el host):"
+                    echo "        docker compose start sonarqube-db sonarqube"
+                  } else {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE', catchInterruptions: false, message: 'SAST falló (no bloquea)') {
+                    // withCredentials inyecta el token como variable de entorno y lo
+                    // ENMASCARA en el log (aparece como ****). Nunca escribas un token
+                    // dentro del Jenkinsfile: el Jenkinsfile va en git.
+                    //
+                    // --user root: la imagen del scanner corre como usuario 'scanner-cli'
+                    // (uid 1000) y necesita escribir .scannerwork dentro del workspace,
+                    // que pertenece a root (Jenkins corre como root en este lab).
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                        // El token va por VARIABLE DE ENTORNO (-e), no como argumento.
+                        // Un argumento de `docker run` es visible en el `ps` del HOST y
+                        // en `docker inspect` mientras dura el análisis. Jenkins lo
+                        // enmascara en SU consola, pero no en el sistema operativo.
+                        sh '''
+                            docker run --rm \
+                              --network "$DOCKER_NET" \
+                              --user root \
+                              -e SONAR_TOKEN="$SONAR_TOKEN" \
+                              -v "$WORKSPACE":/usr/src -w /usr/src \
+                              sonarsource/sonar-scanner-cli:latest \
+                                -Dsonar.host.url="$SONAR_HOST_URL" \
+                                -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
+                                -Dsonar.projectName="$SONAR_PROJECT_KEY" \
+                                -Dsonar.sources=. \
+                                -Dsonar.exclusions='**/__pycache__/**,**/.git/**,**/.scannerwork/**' \
+                                -Dsonar.qualitygate.wait=false
+                        '''
+                    }
+                    echo "📊 Resultados en http://localhost:9000 → proyecto '${env.SONAR_PROJECT_KEY}'"
+                }
+                  }
+                }
+            }
+        }
+
+        // ===================================================================
+        //  3) SCA — Trivy sobre el sistema de ficheros
+        //     Busca CVEs conocidos en las DEPENDENCIAS (requirements.txt).
+        // ===================================================================
+        stage('3 · SCA · dependencias (Trivy)') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE', catchInterruptions: false, message: 'SCA falló (no bloquea)') {
+                    sh '''
+                        docker volume inspect trivy-cache >/dev/null 2>&1 \
+                          || echo "AVISO: no existe el volumen 'trivy-cache'; este build se bajará la BD de CVEs entera."
+
+                        # Se escanea UNA sola vez y se guarda el JSON...
+                        docker run --rm \
+                          -v "$WORKSPACE":/src \
+                          -v trivy-cache:/root/.cache/trivy \
+                          -e TRIVY_TIMEOUT=10m \
+                          aquasec/trivy:latest \
+                          fs --scanners vuln --format json --output /src/trivy-fs-report.json --no-progress /src
+
+                        # ...y la tabla legible se genera a partir de ese JSON, sin volver
+                        # a escanear. Con 15 alumnos a la vez, escanear dos veces duplica
+                        # el cuello de botella de la clase.
+                        docker run --rm \
+                          -v "$WORKSPACE":/src \
+                          -v trivy-cache:/root/.cache/trivy \
+                          aquasec/trivy:latest \
+                          convert --format table --severity HIGH,CRITICAL /src/trivy-fs-report.json \
+                          || echo "(no se pudo renderizar la tabla; el JSON para DefectDojo sí está generado)"
+                    '''
+                }
+            }
+        }
+
+        // ===================================================================
+        //  4) BUILD — construir la imagen de la aplicación
+        // ===================================================================
+        stage('4 · Build (Docker)') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE', catchInterruptions: false, message: 'El build falló (no bloquea el resto)') {
+                    sh 'docker build -t "$IMAGE" .'
+                    sh 'docker image ls "$IMAGE"'
+                }
+            }
+        }
+
+        // ===================================================================
+        //  5) CONTAINER SCANNING — Trivy sobre la imagen construida
+        //     Ahora los CVEs son los del SISTEMA OPERATIVO base de la imagen.
+        // ===================================================================
+        stage('5 · Contenedor (Trivy image)') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE', catchInterruptions: false, message: 'Escaneo de imagen falló (no bloquea)') {
+                    sh '''
+                        # Si la etapa 4 falló, la imagen no existe. Sin esta comprobación
+                        # Trivy intentaría descargarla de Docker Hub y el alumno vería un
+                        # "manifest unknown" incomprensible en lugar de la causa real.
+                        if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+                            echo "❌ La imagen '$IMAGE' no existe: la etapa 'Build' no llegó a construirla."
+                            exit 1
+                        fi
+
+                        docker run --rm \
+                          -v /var/run/docker.sock:/var/run/docker.sock \
+                          -v "$WORKSPACE":/out \
+                          -v trivy-cache:/root/.cache/trivy \
+                          -e TRIVY_TIMEOUT=10m \
+                          aquasec/trivy:latest \
+                          image --format json --output /out/trivy-image-report.json --no-progress "$IMAGE"
+
+                        docker run --rm \
+                          -v "$WORKSPACE":/out \
+                          -v trivy-cache:/root/.cache/trivy \
+                          aquasec/trivy:latest \
+                          convert --format table --severity HIGH,CRITICAL /out/trivy-image-report.json \
+                          || echo "(no se pudo renderizar la tabla; el JSON para DefectDojo sí está generado)"
+                    '''
+                }
+            }
+        }
+
+        // ===================================================================
+        //  6) DAST — OWASP ZAP contra la aplicación EN EJECUCIÓN
+        //     Las etapas anteriores miran el código; esta ATACA la app viva.
+        // ===================================================================
+        stage('6 · DAST (OWASP ZAP)') {
+            when { expression { return params.RUN_DAST } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE', catchInterruptions: false, message: 'DAST falló (no bloquea)') {
+                    sh '''
+                        # ZAP corre como usuario 'zap' (uid 1000) dentro del contenedor y
+                        # necesita ESCRIBIR sus informes en /zap/wrk. Le damos un
+                        # subdirectorio del workspace con permisos abiertos.
+                        rm -rf "$WORKSPACE/zapout"
+                        mkdir -p "$WORKSPACE/zapout"
+                        chmod 777 "$WORKSPACE/zapout"
+
+                        # -I    : no marcar fallo por avisos (warnings)
+                        # -x/-r : informes XML (para DefectDojo) y HTML (para leerlo)
+                        # -m 1  : 1 minuto de araña (spider)
+                        # -T 5  : ⚠️ IMPRESCINDIBLE. Sin -T, la espera del escaneo pasivo
+                        #         NO tiene límite y puede colgarse hasta que salte el
+                        #         timeout global de 30 min, llevándose la clase por delante.
+                        # --memory / -Xmx: zap.sh calcula su heap leyendo rutas de cgroup v1
+                        # (/sys/fs/cgroup/memory/...). Esta máquina usa cgroup v2, así que
+                        # ZAP NO ve el límite del contenedor: ve la RAM del host y arranca
+                        # con -Xmx2440m. No revienta (Xmx es un techo, no una reserva), pero
+                        # si algún día creciera, el que muere por OOM no es ZAP: es GitLab.
+                        # --memory acota el daño y -z le dice a la JVM cuál es su techo real.
+                        docker run --rm \
+                          --network "$DOCKER_NET" \
+                          --memory=1200m --memory-swap=1200m \
+                          -v "$WORKSPACE/zapout":/zap/wrk:rw \
+                          ghcr.io/zaproxy/zaproxy:stable \
+                          zap-baseline.py -t "$DAST_TARGET" \
+                                          -x zap-report.xml -r zap-report.html \
+                                          -I -m 1 -T 5 -z "-Xmx768m" || true
+
+                        cp -f "$WORKSPACE/zapout/zap-report.xml" "$WORKSPACE/zap-report.xml" 2>/dev/null \
+                          && echo "✅ informe ZAP copiado al workspace" \
+                          || echo "⚠️  ZAP no generó informe XML"
+                    '''
+                }
+            }
+        }
+
+        // ===================================================================
+        //  7) INFORME — consolidar TODO en DefectDojo
+        //     Se llama a la API desde el propio contenedor de Jenkins, que
+        //     está en la red devsecops-net y por eso alcanza a DefectDojo.
+        // ===================================================================
+        stage('7 · Informe (DefectDojo)') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE', catchInterruptions: false, message: 'La importación a DefectDojo falló') {
+                    withCredentials([string(credentialsId: 'defectdojo-api-key', variable: 'DD_API_KEY')]) {
+                        sh '''
+                            # Engagement ESTABLE por job (SIN el número de build). Así todos
+                            # tus escaneos se acumulan en el MISMO sitio y puedes comparar
+                            # "antes y después" de arreglar la vulnerabilidad — que es el
+                            # momento clave de la práctica. Si el nombre llevara el número
+                            # de build, cada ejecución crearía un engagement nuevo y, con
+                            # una clase entera, el producto quedaría inservible.
+                            ENGAGEMENT="Jenkins · ${JOB_NAME}"
+
+                            import_report () {
+                              SCAN_TYPE="$1"; FILE="$2"; TITLE="$3"
+                              if [ ! -f "$FILE" ]; then
+                                echo "  ⏭️  $FILE no existe, se omite $SCAN_TYPE"; return 0
+                              fi
+                              echo "  ⬆️  Importando '$SCAN_TYPE' desde $FILE"
+                              HTTP=$(curl -s -o /tmp/dd_resp.json -w "%{http_code}" -X POST \
+                                "${DEFECTDOJO_URL}/api/v2/import-scan/" \
+                                -H "Authorization: Token ${DD_API_KEY}" \
+                                -F "scan_type=${SCAN_TYPE}" \
+                                -F "test_title=${TITLE}" \
+                                -F "file=@${FILE}" \
+                                -F "product_type_name=DevSecOps" \
+                                -F "product_name=${DEFECTDOJO_PRODUCT}" \
+                                -F "engagement_name=${ENGAGEMENT}" \
+                                -F "auto_create_context=true" \
+                                -F "active=true" -F "verified=false" \
+                                -F "minimum_severity=Info" \
+                                -F "scan_date=$(date +%F)")
+                              case "$HTTP" in
+                                2*) echo "     -> HTTP $HTTP ✅ importado" ;;
+                                *)  echo "     -> HTTP $HTTP ⚠️  respuesta:"; head -c 400 /tmp/dd_resp.json; echo "" ;;
+                              esac
+                            }
+
+                            # test_title distingue los dos escaneos de Trivy: sin él,
+                            # DefectDojo crea dos tests llamados igual ("Trivy Scan") y no
+                            # se puede saber cuál es el de dependencias y cuál el de la imagen.
+                            cd "$WORKSPACE"
+                            import_report "Gitleaks Scan" "gitleaks-report.json"    "Gitleaks · secretos (build #${BUILD_NUMBER})"
+                            import_report "Trivy Scan"    "trivy-fs-report.json"    "Trivy FS · dependencias (build #${BUILD_NUMBER})"
+                            import_report "Trivy Scan"    "trivy-image-report.json" "Trivy Image · imagen Docker (build #${BUILD_NUMBER})"
+                            import_report "ZAP Scan"      "zap-report.xml"          "OWASP ZAP · DAST baseline (build #${BUILD_NUMBER})"
+                            echo "✅ Revisa el producto '${DEFECTDOJO_PRODUCT}' en DefectDojo (http://localhost:8080)."
+                            echo "   (En las versiones recientes de DefectDojo el menú 'Products' se llama 'Assets')."
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Qué hacer SIEMPRE al terminar, pase lo que pase ─────────────────────
+    post {
+        always {
+            // Los informes quedan colgados del build para poder descargarlos.
+            archiveArtifacts artifacts: '*.json, *.xml, zapout/*.html',
+                             allowEmptyArchive: true,
+                             fingerprint: false   // los fingerprints sobreviven al buildDiscarder
+                                                  // y aquí no aportan nada: solo llenan JENKINS_HOME
+
+            // Pestaña con el informe HTML de ZAP dentro del propio build.
+            // OJO: `allowMissing` tolera que falte el FICHERO, pero si falta el
+            // DIRECTORIO el paso escribe un ERROR en el log. Como el DAST es
+            // opcional, comprobamos antes de publicar para no asustar al alumno
+            // con un "ERROR" rojo en un build que ha ido bien.
+            script {
+                if (fileExists('zapout/zap-report.html')) {
+                    publishHTML(target: [
+                        reportName           : 'Informe OWASP ZAP',
+                        reportDir            : 'zapout',
+                        reportFiles          : 'zap-report.html',
+                        allowMissing         : true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll              : true
+                    ])
+                } else {
+                    echo 'ℹ️  Sin informe de ZAP (el DAST estaba desactivado): no se publica la pestaña.'
+                }
+            }
+
+            // Limpieza: borrar la imagen construida para no llenar el disco del lab.
+            sh 'docker image rm -f "$IMAGE" >/dev/null 2>&1 || true'
+        }
+        success  { echo '🟢 VERDE: pipeline completo sin bloqueos.' }
+        unstable { echo '🟡 AMARILLO: hay hallazgos de seguridad. Míralos en DefectDojo y SonarQube.' }
+        failure  { echo '🔴 ROJO: el quality gate ha bloqueado el pipeline (o hubo un error real). Revisa el log de la etapa.' }
+    }
+}

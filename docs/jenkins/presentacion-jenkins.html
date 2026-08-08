@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Jenkins — Automatiza tu pipeline DevSecOps</title>
+<style>
+  @page { size: 254mm 143mm; margin: 0; }
+
+  :root {
+    --ink:   #0f172a;
+    --ink2:  #1e293b;
+    --blue:  #2563eb;
+    --blue2: #1d4ed8;
+    --sky:   #38bdf8;
+    --slate: #64748b;
+    --line:  #e2e8f0;
+    --bg:    #f8fafc;
+    --green: #059669;
+    --amber: #d97706;
+    --red:   #dc2626;
+    --violet:#7c3aed;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink2);
+    font-size: 11pt;
+    line-height: 1.42;
+    counter-reset: slide;
+  }
+
+  /* ─────────── Estructura de diapositiva ─────────── */
+  .slide {
+    width: 254mm; height: 143mm;
+    padding: 11mm 14mm 12mm 14mm;
+    position: relative;
+    overflow: hidden;
+    break-after: page;
+    background: #ffffff;
+    counter-increment: slide;
+  }
+  .slide:last-child { break-after: auto; }
+
+  .slide::after {
+    content: counter(slide);
+    position: absolute; right: 9mm; bottom: 5mm;
+    font-size: 8pt; color: #cbd5e1; font-weight: 700;
+  }
+  .slide::before {
+    content: "";
+    position: absolute; left: 0; top: 0; width: 100%; height: 5px;
+    background: linear-gradient(90deg, var(--blue) 0%, var(--sky) 100%);
+  }
+  .slide.dark::before { background: linear-gradient(90deg, var(--sky) 0%, #a78bfa 100%); }
+  .slide.dark::after  { color: rgba(255,255,255,.35); }
+
+  .kicker {
+    font-size: 8.5pt; letter-spacing: 2.4px; text-transform: uppercase;
+    color: var(--blue); font-weight: 700; margin-bottom: 3mm;
+  }
+  h1 { font-size: 30pt; line-height: 1.08; margin: 0 0 4mm; color: var(--ink); font-weight: 800; letter-spacing: -.5px; }
+  h2 { font-size: 20pt; line-height: 1.12; margin: 0 0 5mm; color: var(--ink); font-weight: 700; letter-spacing: -.3px; }
+  h3 { font-size: 12.5pt; margin: 0 0 2mm; color: var(--blue2); font-weight: 700; }
+  p  { margin: 0 0 2.6mm; }
+
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin: 0 0 2.2mm; }
+  li::marker { color: var(--blue); font-weight: 700; }
+  .tight li { margin: 0 0 1.4mm; }
+
+  b, strong { color: var(--ink); font-weight: 700; }
+  code {
+    font-family: "Consolas", "DejaVu Sans Mono", monospace;
+    background: #eef2ff; color: #4338ca; padding: 0 4px; border-radius: 3px; font-size: .92em;
+  }
+  pre {
+    background: var(--ink); color: #e2e8f0; border-radius: 7px;
+    padding: 4mm 5mm; margin: 0 0 3mm;
+    font-family: "Consolas", "DejaVu Sans Mono", monospace;
+    font-size: 8.4pt; line-height: 1.45; white-space: pre-wrap;
+  }
+  pre.sm { font-size: 7.6pt; line-height: 1.4; }
+  pre.xs { font-size: 7.0pt; line-height: 1.36; }
+  pre code { background: none; color: inherit; padding: 0; }
+  .c-key { color: #93c5fd; } .c-str { color: #86efac; } .c-com { color: #7c8ba1; font-style: italic; }
+  .c-num { color: #fca5a5; }
+
+  /* ─────────── Portada / separadores ─────────── */
+  .slide.dark {
+    background: linear-gradient(140deg, #0b1220 0%, #14264d 55%, #1e3a8a 100%);
+    color: #e2e8f0;
+  }
+  .slide.dark h1, .slide.dark h2 { color: #fff; }
+  .slide.dark h3 { color: var(--sky); }
+  .slide.dark .kicker { color: var(--sky); }
+  .slide.dark b { color: #fff; }
+  .slide.dark code { background: rgba(255,255,255,.12); color: #bfdbfe; }
+
+  .cover-wrap { padding-top: 14mm; }
+  .badges { margin-top: 8mm; }
+  .badge {
+    display: inline-block; background: rgba(255,255,255,.10);
+    border: 1px solid rgba(255,255,255,.22); border-radius: 20px;
+    padding: 2px 12px; margin: 0 5px 5px 0; font-size: 9pt; color: #dbeafe;
+  }
+  .cover-foot { position: absolute; left: 14mm; bottom: 10mm; font-size: 9.5pt; color: #93c5fd; }
+
+  .sep-num {
+    font-size: 60pt; font-weight: 800; color: rgba(255,255,255,.13);
+    position: absolute; right: 16mm; top: 14mm; line-height: 1;
+  }
+
+  /* ─────────── Columnas ─────────── */
+  .cols { display: flex; gap: 8mm; }
+  .cols > * { flex: 1 1 0; min-width: 0; }
+  .cols.g6 { gap: 6mm; }
+  .col-40 { flex: 0 0 40%; } .col-60 { flex: 0 0 56%; }
+  .col-35 { flex: 0 0 34%; } .col-65 { flex: 0 0 62%; }
+
+  /* ─────────── Tarjetas ─────────── */
+  .card {
+    background: var(--bg); border: 1px solid var(--line);
+    border-top: 3px solid var(--blue); border-radius: 8px;
+    padding: 4mm 4.5mm;
+  }
+  .card h3 { margin-bottom: 1.5mm; }
+  .card.green  { border-top-color: var(--green); }
+  .card.green  h3 { color: var(--green); }
+  .card.amber  { border-top-color: var(--amber); }
+  .card.amber  h3 { color: var(--amber); }
+  .card.red    { border-top-color: var(--red); }
+  .card.red    h3 { color: var(--red); }
+  .card.violet { border-top-color: var(--violet); }
+  .card.violet h3 { color: var(--violet); }
+  .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+
+  /* ─────────── Callouts ─────────── */
+  .call {
+    border-radius: 7px; padding: 3mm 4.5mm; margin: 0 0 3mm;
+    font-size: 10.2pt; background: #eff6ff; border-left: 4px solid var(--blue);
+  }
+  .call.key  { background: #ecfdf5; border-left-color: var(--green); }
+  .call.warn { background: #fff7ed; border-left-color: var(--amber); }
+  .call.stop { background: #fef2f2; border-left-color: var(--red); }
+  .call b:first-child { display: inline; }
+  .slide.dark .call { background: rgba(56,189,248,.12); border-left-color: var(--sky); color: #e2e8f0; }
+  .slide.dark .call b { color: #fff; }
+
+  /* ─────────── Tablas ─────────── */
+  table { border-collapse: collapse; width: 100%; font-size: 9.6pt; }
+  th { background: var(--ink2); color: #fff; text-align: left; padding: 2.4mm 3mm; font-weight: 600; }
+  td { border: 1px solid var(--line); padding: 2.2mm 3mm; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  table.sm { font-size: 8.8pt; }
+  table.sm th, table.sm td { padding: 1.8mm 2.4mm; }
+
+  /* ─────────── Pipeline de etapas ─────────── */
+  .pipe { display: flex; gap: 3mm; margin: 3mm 0; }
+  .st {
+    flex: 1 1 0; min-width: 0; text-align: center;
+    background: #f1f5f9; border: 1px solid #cbd5e1; border-top: 4px solid var(--blue);
+    border-radius: 6px; padding: 3mm 1.5mm; font-size: 8pt; color: var(--slate);
+  }
+  .st b { display: block; font-size: 9pt; color: var(--ink); margin-bottom: .8mm; }
+  .st .tool { display: block; color: var(--blue); font-weight: 700; font-size: 8.4pt; }
+  .st.g { border-top-color: var(--green); } .st.g .tool { color: var(--green); }
+  .st.a { border-top-color: var(--amber); } .st.a .tool { color: var(--amber); }
+  .st.v { border-top-color: var(--violet); } .st.v .tool { color: var(--violet); }
+
+  /* ─────────── Varios ─────────── */
+  .lead { font-size: 13pt; color: var(--slate); margin-bottom: 5mm; line-height: 1.35; }
+  .slide.dark .lead { color: #cbd5e1; }
+  .num {
+    display: inline-block; background: var(--blue); color: #fff;
+    width: 6mm; height: 6mm; border-radius: 50%; text-align: center;
+    line-height: 6mm; font-size: 9.5pt; font-weight: 700; margin-right: 2mm;
+  }
+  .small { font-size: 8.8pt; color: var(--slate); }
+  .center { text-align: center; }
+  .arrow { color: var(--blue); font-weight: 800; }
+  .chip {
+    display: inline-block; background: #eef2ff; color: #3730a3;
+    border: 1px solid #c7d2fe; border-radius: 5px; padding: 1px 7px;
+    font-size: 8.6pt; font-weight: 600; margin: 0 3px 3px 0;
+  }
+  .ok  { color: var(--green); font-weight: 700; }
+  .no  { color: var(--red);   font-weight: 700; }
+  .mid { color: var(--amber); font-weight: 700; }
+  .agenda-t { display: inline-block; width: 22mm; color: var(--blue); font-weight: 700; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 3mm 0; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════ 1 · PORTADA ══════════════════════════ -->
+<section class="slide dark">
+  <div class="cover-wrap">
+    <div class="kicker">Ciberseguridad · DevSecOps · Sesión 2</div>
+    <h1>Jenkins</h1>
+    <div class="lead" style="font-size:15pt; max-width:170mm;">
+      El orquestador que ejecuta tu pipeline de seguridad.<br>
+      De cero a un pipeline DevSecOps funcionando, en 90 minutos.
+    </div>
+    <div class="badges">
+      <span class="badge">Jenkins LTS</span>
+      <span class="badge">Pipeline as Code</span>
+      <span class="badge">Gitleaks</span>
+      <span class="badge">SonarQube</span>
+      <span class="badge">Trivy</span>
+      <span class="badge">OWASP ZAP</span>
+      <span class="badge">DefectDojo</span>
+    </div>
+  </div>
+  <div class="cover-foot">Academia de Ciberseguridad · Laboratorio DevSecOps</div>
+</section>
+
+<!-- ══════════════════════════ 2 · AGENDA ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Cómo vamos a usar los 90 minutos</div>
+  <h2>Agenda</h2>
+  <div class="cols">
+    <div>
+      <table class="sm">
+        <tr><th style="width:26mm">Tiempo</th><th>Bloque</th></tr>
+        <tr><td><b>0:00 – 0:10</b></td><td>De dónde venimos: tu pipeline en GitLab CI</td></tr>
+        <tr><td><b>0:10 – 0:30</b></td><td>Qué es Jenkins y cómo piensa (teoría útil)</td></tr>
+        <tr><td><b>0:30 – 0:40</b></td><td>Demo en vivo: primer arranque y primer job</td></tr>
+        <tr><td><b>0:40 – 1:20</b></td><td><b>PRÁCTICA</b>: 3 niveles, de "Hola mundo" al pipeline completo</td></tr>
+        <tr><td><b>1:20 – 1:30</b></td><td>Resultados, comparativa y cierre</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="card green">
+        <h3>Al salir de aquí sabrás…</h3>
+        <ul class="tight">
+          <li>Qué es un <b>orquestador CI/CD</b> y por qué Jenkins sigue mandando en la empresa.</li>
+          <li>Crear <b>jobs</b> y escribir un <b>Jenkinsfile</b> declarativo.</li>
+          <li>Guardar tokens en <b>Credentials</b> y usarlos sin exponerlos.</li>
+          <li>Lanzar <b>herramientas de seguridad en contenedores</b> desde el pipeline.</li>
+          <li>Convertir un aviso en un <b>quality gate que bloquea</b>.</li>
+        </ul>
+      </div>
+      <div class="call warn" style="margin-top:4mm">
+        <b>No necesitas saber Java.</b> Jenkins está escrito en Java, pero tú vas a escribir
+        un fichero de texto de 30 líneas y a pulsar botones.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 3 · SEPARADOR 1 ══════════════════════════ -->
+<section class="slide dark">
+  <div class="sep-num">01</div>
+  <div class="cover-wrap" style="padding-top:26mm">
+    <div class="kicker">Bloque 1</div>
+    <h1 style="font-size:26pt">De dónde venimos</h1>
+    <div class="lead">Lo que ya construiste con GitLab CI, y la pregunta que deja abierta.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 4 · RECAP ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Recordatorio de la sesión anterior</div>
+  <h2>Ya montaste esto: un pipeline DevSecOps</h2>
+  <div class="pipe">
+    <div class="st"><b>1 · Secrets</b><span class="tool">Gitleaks</span>credenciales en el código</div>
+    <div class="st"><b>2 · SAST</b><span class="tool">SonarQube</span>análisis del código</div>
+    <div class="st"><b>3 · SCA</b><span class="tool">Trivy fs</span>CVEs de librerías</div>
+    <div class="st"><b>4 · Build</b><span class="tool">Docker</span>construye la imagen</div>
+    <div class="st"><b>5 · Container</b><span class="tool">Trivy image</span>CVEs del SO</div>
+    <div class="st"><b>6 · DAST</b><span class="tool">OWASP ZAP</span>ataca la app viva</div>
+    <div class="st"><b>7 · Report</b><span class="tool">DefectDojo</span>consolida todo</div>
+  </div>
+  <div class="cols" style="margin-top:4mm">
+    <div>
+      <h3>La idea que sostiene todo: <i>Shift-Left</i></h3>
+      <p>Mover los controles de seguridad lo más <b>temprano</b> posible: detectar en el
+      <code>git push</code>, no en producción tres meses después.</p>
+      <p class="small">Un fallo detectado en el IDE cuesta <b>x1</b>. En producción, entre <b>x30 y x100</b>.</p>
+    </div>
+    <div>
+      <div class="call key">
+        <b>Lo importante:</b> las herramientas (Gitleaks, Trivy, ZAP…) <b>no son</b> GitLab.
+        Son programas independientes. GitLab CI solo era <b>quien las llamaba</b>.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 5 · LA PREGUNTA ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">La pieza de la que no hablamos</div>
+  <h2>¿Quién ejecuta todo eso, y cuándo?</h2>
+  <div class="cols">
+    <div class="col-60">
+      <p>Un <b>orquestador de CI/CD</b> es el programa que:</p>
+      <ul class="tight">
+        <li><b>Escucha</b> un evento (un push, una hora, un botón).</li>
+        <li><b>Lee</b> un fichero con la receta (el pipeline).</li>
+        <li><b>Ejecuta</b> cada paso en el orden correcto, en una máquina limpia.</li>
+        <li><b>Guarda</b> logs, informes y artefactos.</li>
+        <li><b>Decide</b> si el resultado es verde, amarillo o rojo.</li>
+      </ul>
+      <div class="call">
+        <b>GitLab CI</b> es un orquestador que viene <i>dentro</i> de GitLab.<br>
+        <b>Jenkins</b> es un orquestador <b>independiente</b>: no le importa dónde esté tu código.
+      </div>
+    </div>
+    <div class="col-40">
+      <div class="card violet">
+        <h3>Otros orquestadores que verás</h3>
+        <p class="small" style="line-height:1.9">
+          <span class="chip">Jenkins</span>
+          <span class="chip">GitLab CI</span>
+          <span class="chip">GitHub Actions</span>
+          <span class="chip">Azure DevOps</span>
+          <span class="chip">TeamCity</span>
+          <span class="chip">CircleCI</span>
+          <span class="chip">Bamboo</span>
+          <span class="chip">Argo / Tekton</span>
+        </p>
+        <p class="small" style="margin-top:2mm">Cambia la sintaxis. <b>No cambian los conceptos</b>:
+        etapas, artefactos, credenciales, agentes, quality gates.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 6 · SEPARADOR 2 ══════════════════════════ -->
+<section class="slide dark">
+  <div class="sep-num">02</div>
+  <div class="cover-wrap" style="padding-top:26mm">
+    <div class="kicker">Bloque 2</div>
+    <h1 style="font-size:26pt">Qué es Jenkins</h1>
+    <div class="lead">Historia mínima, arquitectura y el vocabulario que vas a usar toda la práctica.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 7 · QUÉ ES ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Definición</div>
+  <h2>Jenkins en una frase</h2>
+  <div class="call key" style="font-size:12.5pt">
+    <b>Jenkins</b> es un <b>servidor de automatización</b> de código abierto: un programa que
+    ejecuta tareas (<i>jobs</i>) de forma automática cuando ocurre algo, y te enseña el resultado.
+  </div>
+  <div class="cols g6" style="margin-top:4mm">
+    <div class="card">
+      <h3>Historia (30 s)</h3>
+      <ul class="tight small">
+        <li><b>2004</b> — nace como <i>Hudson</i> en Sun Microsystems.</li>
+        <li><b>2010</b> — Oracle compra Sun y se queda la marca <i>Hudson</i>.</li>
+        <li><b>2011</b> — la comunidad hace <i>fork</i> y lo llama <b>Jenkins</b>.</li>
+        <li><b>2016</b> — Jenkins 2.0: llega el <b>Pipeline as Code</b> (el <code>Jenkinsfile</code>).</li>
+        <li><b>Hoy</b> — proyecto de la Continuous Delivery Foundation, <b>+1.800 plugins</b>.</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>Por qué te lo vas a encontrar sí o sí</h3>
+      <ul class="tight small">
+        <li>Es el CI/CD con <b>más despliegues on-premise</b> del mundo.</li>
+        <li>Banca, industria, defensa, telco: entornos <b>sin conexión a internet</b>.</li>
+        <li><b>Agnóstico</b>: GitHub, GitLab, Bitbucket, SVN, un directorio local…</li>
+        <li>Gratis y auto-hospedado: <b>tú</b> controlas dónde corren los datos.</li>
+      </ul>
+    </div>
+    <div class="card amber">
+      <h3>Y por qué a veces duele</h3>
+      <ul class="tight small">
+        <li>Hay que <b>mantenerlo</b>: actualizaciones, plugins, backups.</li>
+        <li>Los plugins son <b>superpoder y deuda técnica</b> a la vez.</li>
+        <li>La UI es… veterana.</li>
+        <li>Mal configurado es un <b>objetivo de ataque</b> de primer nivel.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 8 · ARQUITECTURA ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Arquitectura</div>
+  <h2>Controller, agentes, executors y workspace</h2>
+  <div class="cols">
+    <div class="col-60">
+      <pre class="sm">   ┌───────────────────────────────────────────────┐
+   │  JENKINS <span class="c-key">CONTROLLER</span>  (el que ves en el navegador)│
+   │  · guarda la configuración y el historial     │
+   │  · decide QUÉ job se ejecuta y DÓNDE          │
+   │  · NO debería ejecutar trabajo pesado         │
+   └───────────────┬───────────────────────────────┘
+                   │  reparte trabajo
+       ┌───────────┼───────────┐
+       ▼           ▼           ▼
+   <span class="c-str">[ AGENTE 1 ]</span> <span class="c-str">[ AGENTE 2 ]</span> <span class="c-str">[ AGENTE n ]</span>
+   Linux/Windows/contenedor/Kubernetes
+       │
+       └─ cada agente tiene N <span class="c-key">EXECUTORS</span>
+          (= cuántos jobs a la vez puede correr)
+          y cada build usa un <span class="c-key">WORKSPACE</span>
+          (= carpeta de trabajo con tu código)</pre>
+      <div class="call warn">
+        <b>En nuestro laboratorio</b> hay un solo nodo: el <b>built-in node</b> (el propio
+        contenedor de Jenkins). Suficiente para aprender; en producción <b>nunca</b> se
+        ejecutan builds en el controller.
+      </div>
+    </div>
+    <div class="col-40">
+      <div class="card">
+        <h3>Vocabulario</h3>
+        <table class="sm">
+          <tr><td><b>Job / Item</b></td><td>Una tarea configurada</td></tr>
+          <tr><td><b>Build</b></td><td>Una ejecución concreta (#1, #2…)</td></tr>
+          <tr><td><b>Stage</b></td><td>Bloque lógico del pipeline</td></tr>
+          <tr><td><b>Step</b></td><td>Una acción (<code>sh</code>, <code>git</code>…)</td></tr>
+          <tr><td><b>Workspace</b></td><td>Carpeta del build</td></tr>
+          <tr><td><b>Artifact</b></td><td>Fichero que se guarda</td></tr>
+          <tr><td><b>Executor</b></td><td>"Carril" de ejecución</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 9 · TIPOS DE JOB ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Tipos de trabajo (New Item)</div>
+  <h2>¿Qué puedo crear en Jenkins?</h2>
+  <table>
+    <tr><th style="width:42mm">Tipo</th><th>Qué es</th><th style="width:52mm">Cuándo se usa</th></tr>
+    <tr>
+      <td><b>Freestyle project</b></td>
+      <td>Se configura <b>a base de formularios</b> en la web. Fácil de empezar, imposible de versionar.</td>
+      <td>Tareas sueltas, mantenimiento heredado</td>
+    </tr>
+    <tr>
+      <td><b>Pipeline</b> <span class="chip">el que usaremos</span></td>
+      <td>Se define en un <b>script</b> (el <code>Jenkinsfile</code>). Va en git, se revisa en un merge request y se reutiliza.</td>
+      <td><b>Todo lo nuevo</b></td>
+    </tr>
+    <tr>
+      <td><b>Multibranch Pipeline</b></td>
+      <td>Escanea el repo y crea <b>un pipeline por rama</b> automáticamente.</td>
+      <td>Equipos con muchas ramas / PRs</td>
+    </tr>
+    <tr>
+      <td><b>Folder</b></td>
+      <td>Carpeta para organizar y aplicar permisos por equipo.</td>
+      <td>Jenkins compartidos (como el de hoy)</td>
+    </tr>
+  </table>
+  <div class="call key" style="margin-top:4mm">
+    <b>Regla de oro:</b> si la configuración de tu automatización no está en <b>git</b>, no existe.
+    Por eso <b>Pipeline + Jenkinsfile</b>, y no Freestyle.
+  </div>
+</section>
+
+<!-- ══════════════════════════ 10 · PLUGINS ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">El alma (y el talón de Aquiles) de Jenkins</div>
+  <h2>Plugins</h2>
+  <div class="cols">
+    <div class="col-60">
+      <p>Jenkins base hace muy poco. <b>Casi todo lo que usarás es un plugin</b>:
+      hasta <code>git</code> y <code>pipeline</code> lo son.</p>
+      <table class="sm">
+        <tr><th style="width:44mm">Plugin</th><th>Para qué</th></tr>
+        <tr><td><code>workflow-aggregator</code></td><td>Pipelines declarativos (el <code>Jenkinsfile</code>)</td></tr>
+        <tr><td><code>git</code></td><td>Clonar repositorios</td></tr>
+        <tr><td><code>credentials-binding</code></td><td>Inyectar secretos como variables</td></tr>
+        <tr><td><code>docker-workflow</code></td><td>Usar contenedores desde el pipeline</td></tr>
+        <tr><td><code>htmlpublisher</code></td><td>Enseñar el informe HTML de ZAP en el build</td></tr>
+        <tr><td><code>timestamper</code> / <code>ansicolor</code></td><td>Logs con hora y con color</td></tr>
+      </table>
+      <p class="small">En el laboratorio ya vienen instalados dentro de la imagen de Jenkins.</p>
+    </div>
+    <div class="col-40">
+      <div class="card red">
+        <h3>Cuidado: superficie de ataque</h3>
+        <ul class="tight small">
+          <li>Cada plugin es <b>código de terceros con permisos totales</b> sobre tu Jenkins.</li>
+          <li>Jenkins es históricamente uno de los productos con <b>más CVEs</b> por plugins.</li>
+          <li>Un Jenkins comprometido = <b>todas</b> tus credenciales de despliegue.</li>
+        </ul>
+        <hr>
+        <p class="small"><b>Buenas prácticas:</b> instala solo lo necesario, revisa los avisos de seguridad
+        (Manage&nbsp;Jenkins&nbsp;▸&nbsp;Security), y actualiza con ventana de mantenimiento.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 11 · CREDENCIALES ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Concepto crítico en DevSecOps</div>
+  <h2>Credentials: los secretos NUNCA van en el Jenkinsfile</h2>
+  <div class="cols">
+    <div class="col-60">
+      <p>El <code>Jenkinsfile</code> vive en <b>git</b>. Todo lo que escribas dentro,
+      lo verá todo el que tenga acceso al repo… y quedará en el <b>historial para siempre</b>.</p>
+      <h3>Tipos de credencial que usaremos</h3>
+      <table class="sm">
+        <tr><th style="width:48mm">Tipo</th><th>Ejemplo de hoy</th></tr>
+        <tr><td><b>Username with password</b></td><td>usuario <code>root</code> + PAT de GitLab</td></tr>
+        <tr><td><b>Secret text</b></td><td>token de SonarQube, API key de DefectDojo</td></tr>
+        <tr><td><b>SSH private key</b></td><td>clonar por SSH, desplegar en un servidor</td></tr>
+        <tr><td><b>Secret file</b></td><td><code>kubeconfig</code>, certificados</td></tr>
+      </table>
+    </div>
+    <div class="col-40">
+      <h3>Cómo se usan</h3>
+      <pre class="sm"><span class="c-com">// El secreto se inyecta SOLO en la etapa que lo necesita</span>
+withCredentials([string(
+      credentialsId: <span class="c-str">'sonar-token'</span>,
+      variable: <span class="c-str">'SONAR_TOKEN'</span>)]) {
+  sh <span class="c-str">'... -Dsonar.token=$SONAR_TOKEN'</span>
+}</pre>
+      <p class="small">También existe <code>environment { X = credentials('id') }</code> para todo el
+      pipeline, pero si el ID no existe <b>el build muere antes de la primera etapa</b>.</p>
+      <div class="call key">
+        Jenkins <b>enmascara</b> el valor en la consola: verás <code>****</code> en vez del token.
+      </div>
+      <div class="call warn">
+        <b>Comillas simples</b> en <code>sh '…'</code>: con <code>sh "…${TOKEN}"</code> Groovy
+        incrusta el secreto y el enmascarado <b>deja de funcionar</b>.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 12 · SEPARADOR 3 ══════════════════════════ -->
+<section class="slide dark">
+  <div class="sep-num">03</div>
+  <div class="cover-wrap" style="padding-top:26mm">
+    <div class="kicker">Bloque 3</div>
+    <h1 style="font-size:26pt">El Jenkinsfile</h1>
+    <div class="lead">Pipeline as Code: tu automatización, versionada como el resto del proyecto.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 13 · ANATOMÍA ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Pipeline declarativo</div>
+  <h2>Anatomía de un Jenkinsfile</h2>
+  <div class="cols">
+    <div class="col-60">
+      <pre class="sm">pipeline {
+  <span class="c-key">agent</span> any                    <span class="c-com">// DÓNDE se ejecuta</span>
+
+  <span class="c-key">options</span> {                    <span class="c-com">// CÓMO se comporta el job</span>
+    timestamps()
+    timeout(time: 30, unit: <span class="c-str">'MINUTES'</span>)
+  }
+  <span class="c-key">parameters</span> {                 <span class="c-com">// QUÉ te pregunta al lanzarlo</span>
+    booleanParam(name: <span class="c-str">'RUN_DAST'</span>, defaultValue: false)
+  }
+  <span class="c-key">environment</span> {                <span class="c-com">// variables para TODO el pipeline</span>
+    SONAR_HOST_URL = <span class="c-str">'http://devsecops-sonarqube:9000'</span>
+  }
+  <span class="c-key">stages</span> {                     <span class="c-com">// EL TRABAJO, en bloques</span>
+    stage(<span class="c-str">'Checkout'</span>) { steps { git url: <span class="c-str">'...'</span> } }
+    stage(<span class="c-str">'Analizar'</span>) { steps { sh <span class="c-str">'./analiza.sh'</span> } }
+  }
+  <span class="c-key">post</span> {                       <span class="c-com">// SIEMPRE al final, pase lo que pase</span>
+    always  { archiveArtifacts artifacts: <span class="c-str">'*.json'</span> }
+    failure { echo <span class="c-str">'Algo ha fallado'</span> }
+  }
+}</pre>
+    </div>
+    <div class="col-40">
+      <div class="card">
+        <h3>Declarativo vs Scripted</h3>
+        <p class="small"><b>Declarativo</b> (el que usamos): estructura fija, más legible,
+        errores claros. <b>Scripted</b>: Groovy puro, todo poder y toda la responsabilidad.</p>
+        <p class="small">Empieza siempre en declarativo; si necesitas lógica, mete un
+        bloque <code>script { … }</code> dentro.</p>
+      </div>
+      <div class="call warn" style="margin-top:3mm">
+        <b>Se llama exactamente <code>Jenkinsfile</code></b>, sin extensión, en la
+        <b>raíz</b> del repositorio. Igual que <code>.gitlab-ci.yml</code> lo era para GitLab.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 14 · STEPS ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Vocabulario práctico</div>
+  <h2>Los <i>steps</i> que vas a usar hoy</h2>
+  <div class="cols g6">
+    <div>
+      <table class="sm">
+        <tr><th style="width:38mm">Step</th><th>Qué hace</th></tr>
+        <tr><td><code>sh 'comando'</code></td><td>Ejecuta shell (Linux). En Windows: <code>bat</code></td></tr>
+        <tr><td><code>echo 'texto'</code></td><td>Escribe en el log</td></tr>
+        <tr><td><code>git url:…</code></td><td>Clona un repositorio</td></tr>
+        <tr><td><code>archiveArtifacts</code></td><td>Guarda ficheros en el build</td></tr>
+        <tr><td><code>withCredentials</code></td><td>Inyecta un secreto</td></tr>
+        <tr><td><code>publishHTML</code></td><td>Publica un informe HTML</td></tr>
+        <tr><td><code>script { … }</code></td><td>Abre un bloque con lógica</td></tr>
+        <tr><td><code>error 'msg'</code></td><td>Aborta el build en <b>rojo</b></td></tr>
+        <tr><td><code>unstable 'msg'</code></td><td>Marca el build en <b>amarillo</b></td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>Variables de entorno útiles</h3>
+      <table class="sm">
+        <tr><th style="width:38mm">Variable</th><th>Contenido</th></tr>
+        <tr><td><code>$WORKSPACE</code></td><td>Ruta de la carpeta del build</td></tr>
+        <tr><td><code>$BUILD_NUMBER</code></td><td>Nº de ejecución (1, 2, 3…)</td></tr>
+        <tr><td><code>$JOB_NAME</code></td><td>Nombre del job</td></tr>
+        <tr><td><code>$BUILD_URL</code></td><td>Enlace directo al build</td></tr>
+        <tr><td><code>$GIT_COMMIT</code></td><td>Hash del commit analizado</td></tr>
+      </table>
+      <div class="call">
+        <b>Truco:</b> en cualquier Jenkins, <code>&lt;URL&gt;/pipeline-syntax</code> te genera
+        la sintaxis exacta de cualquier step con un formulario. Es el mejor amigo del principiante.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 15 · RESULTADOS ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Semáforo</div>
+  <h2>Verde, amarillo, rojo: el resultado <i>es</i> la decisión de seguridad</h2>
+  <div class="cols g6">
+    <div class="card green">
+      <h3>🟢 SUCCESS</h3>
+      <p class="small">Todo pasó. Nada que reportar.</p>
+      <p class="small"><b>En seguridad:</b> ninguna herramienta encontró nada por encima del umbral.</p>
+    </div>
+    <div class="card amber">
+      <h3>🟡 UNSTABLE</h3>
+      <p class="small">Terminó, pero <b>con hallazgos</b>. Step: <code>unstable('…')</code></p>
+      <p class="small"><b>En seguridad:</b> "hay vulnerabilidades, míralas" — <b>avisa pero no bloquea</b>.</p>
+    </div>
+    <div class="card red">
+      <h3>🔴 FAILURE</h3>
+      <p class="small">Se abortó. Step: <code>error('…')</code></p>
+      <p class="small"><b>En seguridad:</b> el <b>quality gate</b>. Nada avanza hasta que se arregle.</p>
+    </div>
+  </div>
+  <div class="call key" style="margin-top:4mm">
+    <b>Traducción desde GitLab CI:</b> lo que allí hacías con <code>allow_failure: true</code>
+    (avisar) aquí es <code>unstable()</code>; y <code>allow_failure: false</code> (bloquear)
+    aquí es <code>error()</code>. <b>Mismo concepto, otra sintaxis.</b>
+  </div>
+  <p class="small">También existe <b>ABORTED</b> (alguien lo canceló o saltó el <code>timeout</code>) y
+  <b>NOT_BUILT</b> (una etapa que se saltó por una condición <code>when</code>).</p>
+</section>
+
+<!-- ══════════════════════════ 16 · TRIGGERS ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">¿Cuándo se lanza un pipeline?</div>
+  <h2>Disparadores</h2>
+  <div class="cols g6">
+    <div>
+      <table class="sm">
+        <tr><th style="width:44mm">Disparador</th><th>Cómo funciona</th></tr>
+        <tr><td><b>Manual</b> <span class="chip">hoy</span></td><td>Botón <i>Build Now</i>. Perfecto para aprender.</td></tr>
+        <tr><td><b>Webhook</b></td><td>GitLab/GitHub avisa a Jenkins en cuanto hay push. <b>Lo estándar en producción.</b></td></tr>
+        <tr><td><b>SCM Polling</b></td><td>Jenkins pregunta cada X minutos "¿hay algo nuevo?". Simple pero derrochador.</td></tr>
+        <tr><td><b>Cron</b></td><td><code>H 2 * * *</code> — escaneos nocturnos completos.</td></tr>
+        <tr><td><b>Upstream</b></td><td>Se lanza cuando termina otro job.</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="call warn">
+        <b>Por qué hoy lo lanzamos a mano:</b> con 15 personas y un solo servidor, los
+        webhooks dispararían pipelines a la vez y se saturaría. En tu empresa,
+        el webhook es lo normal.
+      </div>
+      <div class="card violet">
+        <h3>Patrón real en seguridad</h3>
+        <ul class="tight small">
+          <li><b>Por push</b>: lo rápido (secretos, SAST, SCA) — segundos o pocos minutos.</li>
+          <li><b>Cada noche</b>: lo lento (DAST completo, escaneo de todas las imágenes).</li>
+          <li><b>Por release</b>: el quality gate duro que bloquea el despliegue.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 17 · SEPARADOR 4 ══════════════════════════ -->
+<section class="slide dark">
+  <div class="sep-num">04</div>
+  <div class="cover-wrap" style="padding-top:26mm">
+    <div class="kicker">Bloque 4</div>
+    <h1 style="font-size:26pt">Jenkins + Docker</h1>
+    <div class="lead">Cómo un Jenkins que no tiene instalado nada consigue ejecutar Trivy, ZAP o SonarQube.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 18 · DooD ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">El truco central del laboratorio</div>
+  <h2>Jenkins no tiene las herramientas: las lanza en contenedores</h2>
+  <div class="cols">
+    <div class="col-60">
+      <pre class="sm">   ┌── contenedor <span class="c-key">devsecops-jenkins</span> ─────────────┐
+   │  Jenkins + cliente `docker`                │
+   │                                            │
+   │   sh 'docker run ... aquasec/trivy ...'    │
+   │            │                               │
+   └────────────┼───────────────────────────────┘
+                │  a través de /var/run/docker.sock
+                ▼
+   ┌── DEMONIO DOCKER <span class="c-key">DEL HOST</span> ──────────────────┐
+   │                                            │
+   │   crea un contenedor <span class="c-str">HERMANO</span>, no hijo:     │
+   │   [gitleaks] [trivy] [sonar-scanner] [zap] │
+   └────────────────────────────────────────────┘</pre>
+      <p class="small">Se llama <b>DooD</b> — <i>Docker out of Docker</i>. Le montamos a Jenkins el
+      <b>socket</b> del demonio Docker del host, así que sus <code>docker run</code> crean
+      contenedores <b>al lado</b> del suyo, no dentro.</p>
+    </div>
+    <div class="col-40">
+      <div class="card green">
+        <h3>La ventaja</h3>
+        <p class="small">Jenkins se mantiene <b>limpio</b>. ¿Necesitas otra versión de Trivy?
+        Cambias una etiqueta de imagen. Nada que instalar, nada que desinstalar.</p>
+      </div>
+      <div class="card red" style="margin-top:3mm">
+        <h3>La advertencia de seguridad</h3>
+        <p class="small">Quien pueda escribir un pipeline en este Jenkins <b>puede hacer lo que
+        quiera en el host</b>: el socket de Docker equivale a <b>root</b>.</p>
+        <p class="small">En producción: agentes efímeros, Kubernetes, o <code>buildkit</code>/<code>kaniko</code>
+        sin socket. En el laboratorio lo aceptamos <b>a propósito</b>, y hay que saberlo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 19 · EL FALLO CLÁSICO ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Si algún día "el escáner no encuentra nada"…</div>
+  <h2>El fallo clásico: las rutas del workspace</h2>
+  <div class="cols">
+    <div class="col-60">
+      <p>Cuando el pipeline ejecuta:</p>
+      <pre class="sm">docker run -v <span class="c-key">"$WORKSPACE"</span>:/src aquasec/trivy fs /src</pre>
+      <p>…esa ruta <b>NO la interpreta Jenkins</b>. La interpreta el <b>demonio Docker del host</b>,
+      que no sabe nada del sistema de ficheros interno del contenedor de Jenkins.</p>
+      <div class="call stop">
+        <b>Si la ruta no existe también en el host</b>, Docker no da error: <b>crea un directorio
+        vacío</b> y lo monta. Resultado: el escáner analiza la nada y dice
+        <i>"0 vulnerabilidades"</i>. <b>Un falso verde: lo peor que puede pasar en seguridad.</b>
+      </div>
+    </div>
+    <div class="col-40">
+      <div class="card green">
+        <h3>Cómo lo resolvemos</h3>
+        <p class="small">Montamos <code>JENKINS_HOME</code> con la <b>misma ruta</b> dentro y fuera:</p>
+        <pre class="sm">volumes:
+  - <span class="c-str">/var/jenkins_home</span>:<span class="c-str">/var/jenkins_home</span></pre>
+        <p class="small">Así <code>$WORKSPACE</code> apunta al mismo sitio en los dos mundos.</p>
+      </div>
+      <p class="small" style="margin-top:3mm"><b>Comprobación rápida en clase:</b> añade un
+      <code>ls -la /src</code> dentro del contenedor. Si sale vacío, es esto.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 20 · NUESTRO PIPELINE ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Lo que vas a construir en la práctica</div>
+  <h2>El mismo pipeline DevSecOps, ahora en Jenkins</h2>
+  <div class="pipe">
+    <div class="st"><b>1 · Secretos</b><span class="tool">Gitleaks</span><code style="font-size:6.6pt">docker run</code></div>
+    <div class="st"><b>2 · SAST</b><span class="tool">SonarQube</span><code style="font-size:6.6pt">docker run</code></div>
+    <div class="st"><b>3 · SCA</b><span class="tool">Trivy fs</span><code style="font-size:6.6pt">docker run</code></div>
+    <div class="st g"><b>4 · Build</b><span class="tool">Docker</span><code style="font-size:6.6pt">docker build</code></div>
+    <div class="st"><b>5 · Imagen</b><span class="tool">Trivy image</span><code style="font-size:6.6pt">docker run</code></div>
+    <div class="st a"><b>6 · DAST</b><span class="tool">OWASP ZAP</span><code style="font-size:6.6pt">docker run</code></div>
+    <div class="st v"><b>7 · Informe</b><span class="tool">DefectDojo</span><code style="font-size:6.6pt">curl API</code></div>
+  </div>
+  <div class="cols g6" style="margin-top:3mm">
+    <div class="col-60">
+      <table class="sm">
+        <tr><th style="width:30mm">GitLab CI</th><th style="width:32mm">Jenkins</th><th>Es lo mismo</th></tr>
+        <tr><td><code>.gitlab-ci.yml</code></td><td><code>Jenkinsfile</code></td><td>La receta, en el repo</td></tr>
+        <tr><td><code>stages:</code></td><td><code>stages { }</code></td><td>Bloques del pipeline</td></tr>
+        <tr><td><code>script:</code></td><td><code>steps { sh }</code></td><td>Los comandos</td></tr>
+        <tr><td><code>variables:</code></td><td><code>environment { }</code></td><td>Variables</td></tr>
+        <tr><td>Settings ▸ CI/CD ▸ Variables</td><td>Credentials</td><td>Los secretos</td></tr>
+        <tr><td><code>artifacts:</code></td><td><code>archiveArtifacts</code></td><td>Guardar informes</td></tr>
+        <tr><td><code>allow_failure: true</code></td><td><code>unstable()</code></td><td>Avisar sin bloquear</td></tr>
+      </table>
+    </div>
+    <div class="col-40">
+      <div class="call key">
+        <b>La lección de fondo:</b> aprendiste <b>conceptos</b>, no una herramienta.
+        Cambiar de orquestador es cambiar de sintaxis, no de forma de pensar.
+      </div>
+      <div class="call warn">
+        <b>Ojo con las URLs:</b> dentro de la red Docker se usan <b>nombres de contenedor</b>
+        (<code>devsecops-sonarqube:9000</code>), nunca <code>localhost</code>.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 21 · QUALITY GATE ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">De "informar" a "impedir"</div>
+  <h2>El quality gate: cuando la seguridad tiene dientes</h2>
+  <div class="cols">
+    <div class="col-60">
+      <pre class="sm"><span class="c-com">// Gitleaks devuelve 1 cuando ENCUENTRA secretos:</span>
+<span class="c-com">// no es un error de ejecución, es un HALLAZGO.</span>
+int rc = sh(returnStatus: <span class="c-num">true</span>, script: <span class="c-str">'docker run ... gitleaks detect ...'</span>)
+
+if (rc == <span class="c-num">0</span>) {
+    echo <span class="c-str">'Sin secretos'</span>                        <span class="c-com">// 🟢</span>
+} else if (params.BLOQUEAR_SI_HAY_SECRETOS) {
+    <span class="c-key">error</span>(<span class="c-str">'QUALITY GATE: secretos detectados'</span>)  <span class="c-com">// 🔴 aborta</span>
+} else {
+    <span class="c-key">unstable</span>(<span class="c-str">'Secretos detectados (aviso)'</span>)      <span class="c-com">// 🟡 continúa</span>
+}</pre>
+      <p class="small">Fíjate en <code>returnStatus: true</code>: sin eso, <code>sh</code> aborta el
+      pipeline en cuanto el comando devuelve algo distinto de 0 y <b>nunca llegarías a decidir</b>.</p>
+    </div>
+    <div class="col-40">
+      <div class="card amber">
+        <h3>Cómo se implanta en la vida real</h3>
+        <ol class="tight small">
+          <li><b>Fase 1 — Observar:</b> todo en amarillo. Nadie se bloquea; se mide cuánta deuda hay.</li>
+          <li><b>Fase 2 — Congelar:</b> bloquea solo lo <b>nuevo</b> (no empeorar).</li>
+          <li><b>Fase 3 — Bloquear:</b> critical y secretos rompen el build, sin excepciones.</li>
+        </ol>
+        <p class="small">Empezar por la fase 3 el primer día es la forma más rápida de que
+        el equipo <b>desactive</b> la seguridad.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 22 · SEPARADOR PRÁCTICA ══════════════════════════ -->
+<section class="slide dark">
+  <div class="sep-num">05</div>
+  <div class="cover-wrap" style="padding-top:22mm">
+    <div class="kicker">Bloque 5 · 40 minutos</div>
+    <h1 style="font-size:26pt">Práctica</h1>
+    <div class="lead">Tres niveles. Cada uno funciona por sí solo: si te atascas en uno, el siguiente sigue teniendo sentido.</div>
+    <div class="badges">
+      <span class="badge">Nivel 1 · Tu primer pipeline (10 min)</span>
+      <span class="badge">Nivel 2 · Código + escáner real (15 min)</span>
+      <span class="badge">Nivel 3 · Pipeline DevSecOps completo (15 min)</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 23 · ACCESOS ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Antes de empezar</div>
+  <h2>Accesos del laboratorio</h2>
+  <div class="cols">
+    <div class="col-60">
+      <table class="sm">
+        <tr><th style="width:34mm">Herramienta</th><th style="width:52mm">URL (navegador)</th><th>Usuario / clave</th></tr>
+        <tr><td><b>Jenkins</b> <span class="chip">hoy</span></td><td><code>http://localhost:8180</code></td><td>el que creó el instructor</td></tr>
+        <tr><td>GitLab</td><td><code>http://localhost:8929</code></td><td>root / <code>DevSecOps2024!</code></td></tr>
+        <tr><td>SonarQube</td><td><code>http://localhost:9000</code></td><td>admin / <code>DevSecOps2024!</code></td></tr>
+        <tr><td>DefectDojo</td><td><code>http://localhost:8080</code></td><td>admin / <code>DevSecOps2024!</code></td></tr>
+        <tr><td>Juice Shop</td><td><code>http://localhost:3000</code></td><td>(objetivo del DAST)</td></tr>
+      </table>
+      <p class="small">Si trabajas contra el servidor del aula, cambia <code>localhost</code> por su IP.</p>
+    </div>
+    <div class="col-40">
+      <div class="call stop">
+        <b>Las dos URLs de cada servicio.</b> Tú entras por <code>localhost:PUERTO</code>.
+        El pipeline, que corre en contenedores, usa el <b>nombre del contenedor</b>:
+        <code>devsecops-sonarqube:9000</code>, <code>devsecops-defectdojo:8081</code>,
+        <code>devsecops-juiceshop:3000</code>, <code>devsecops-gitlab:8929</code>.
+      </div>
+      <div class="call warn">
+        <b>Jenkins es compartido.</b> Pon <b>tu nombre</b> en todo lo que crees:
+        <code>pipeline-ana</code>, <code>gitlab-cred-ana</code>… Así no os pisáis.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 24 · NIVEL 1 ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Nivel 1 · 10 minutos</div>
+  <h2>Tu primer pipeline: "Hola, Jenkins"</h2>
+  <div class="cols">
+    <div class="col-60">
+      <p><span class="num">1</span><b>New Item</b> (menú izquierdo) → nombre <code>pipeline-TUNOMBRE</code> → tipo <b>Pipeline</b> → <b>OK</b>.</p>
+      <p><span class="num">2</span>Baja hasta la sección <b>Pipeline</b>, deja <i>Definition: Pipeline script</i> y pega:</p>
+      <pre class="sm">pipeline {
+  agent any
+  stages {
+    stage(<span class="c-str">'Saludo'</span>) {
+      steps {
+        echo <span class="c-str">"Hola, soy el build #${env.BUILD_NUMBER}"</span>
+        sh <span class="c-str">'date; whoami; pwd'</span>
+      }
+    }
+    stage(<span class="c-str">'¿Tengo Docker?'</span>) {
+      steps { sh <span class="c-str">'docker version --format "Servidor: {{.Server.Version}}"'</span> }
+    }
+  }
+}</pre>
+      <p><span class="num">3</span><b>Save</b> → <b>Build Now</b> → clic en el build <b>#1</b> → <b>Console Output</b>.</p>
+    </div>
+    <div class="col-40">
+      <div class="card green">
+        <h3>Qué acabas de ver</h3>
+        <ul class="tight small">
+          <li>El <b>Stage View</b>: una columna por etapa, con su tiempo.</li>
+          <li>El <b>Console Output</b>: el log completo. <b>Aquí se depura todo.</b></li>
+          <li><code>whoami</code> → <b>root</b>; <code>pwd</code> → tu <b>workspace</b>.</li>
+          <li>Jenkins <b>sí</b> puede hablar con Docker: eso es lo que hará el trabajo pesado.</li>
+        </ul>
+      </div>
+      <div class="call">
+        <b>Rompe algo a propósito:</b> cambia <code>sh 'date'</code> por
+        <code>sh 'fecha'</code> y vuelve a lanzar. Mira cómo se pone en <b>rojo</b> y
+        cómo el log te dice exactamente qué línea falló.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 25 · NIVEL 2 ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Nivel 2 · 15 minutos</div>
+  <h2>Código real + un escáner de seguridad de verdad</h2>
+  <div class="cols">
+    <div class="col-60">
+      <p><span class="num">1</span><b>Credencial de GitLab</b> — <i>Manage Jenkins ▸ Credentials ▸ System ▸ Global ▸ Add Credentials</i>:
+      <b>Username with password</b>, usuario <code>root</code>, contraseña <b>tu PAT</b>, ID <code>gitlab-cred-TUNOMBRE</code>.
+      <span class="num">2</span>Job → <b>Configure</b> → sustituye el script:</p>
+      <pre class="xs">pipeline {
+  agent any
+  stages {
+    stage(<span class="c-str">'Checkout'</span>) {
+      steps { git url: <span class="c-str">'http://devsecops-gitlab:8929/root/devsecops-sample.git'</span>,
+                  branch: <span class="c-str">'main'</span>, credentialsId: <span class="c-str">'gitlab-cred-TUNOMBRE'</span> }
+    }
+    stage(<span class="c-str">'Secretos'</span>) {
+      steps {
+        sh <span class="c-str">'''docker run --rm -v "$WORKSPACE":/src -w /src \
+              ghcr.io/gitleaks/gitleaks:v8.18.4 detect --source /src \
+              --report-format json --report-path /src/gitleaks-report.json \
+              --redact --verbose || true'''</span>
+      }
+    }
+  }
+  post { always { archiveArtifacts <span class="c-str">'*.json'</span> } }
+}</pre>
+    </div>
+    <div class="col-40">
+      <div class="card">
+        <h3>Fíjate en 3 cosas</h3>
+        <ul class="tight small">
+          <li>La URL usa <b>devsecops-gitlab</b>, no localhost: el job vive en la red Docker.</li>
+          <li>El token <b>no está</b> en el script: está en <b>Credentials</b>.</li>
+          <li><code>-v "$WORKSPACE":/src</code> le da al contenedor de Gitleaks tu código.</li>
+        </ul>
+      </div>
+      <div class="call key">
+        <b>Resultado:</b> <b>1</b> hallazgo — regla <code>aws-access-token</code> en <code>app.py:23</code>.
+      </div>
+      <div class="call warn">
+        <b>¿Y las otras dos claves de app.py?</b> Gitleaks va por <b>patrones conocidos</b>;
+        <code>SuperSecret123!</code> no parece nada. <b>Falso negativo</b> — pero SonarQube
+        sí lo caza. Ninguna herramienta sola basta.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 26 · NIVEL 3 ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Nivel 3 · 15 minutos</div>
+  <h2>El pipeline completo, desde el repositorio</h2>
+  <div class="cols">
+    <div class="col-60">
+      <p><span class="num">1</span><b>Crea las otras dos credenciales</b> (tipo <b>Secret text</b>):</p>
+      <table class="sm">
+        <tr><th style="width:44mm">ID</th><th>Valor</th></tr>
+        <tr><td><code>sonar-token</code></td><td>token <code>squ_…</code> de SonarQube (<i>My Account ▸ Security</i>)</td></tr>
+        <tr><td><code>defectdojo-api-key</code></td><td>API key de DefectDojo (<i>avatar ▸ API v2 Key</i>)</td></tr>
+      </table>
+      <p><span class="num">2</span>En tu job → <b>Configure</b> → sección Pipeline →
+      <i>Definition</i>: <b>Pipeline script from SCM</b> → SCM <b>Git</b> →
+      URL <code>http://devsecops-gitlab:8929/root/devsecops-sample.git</code> →
+      credencial → <i>Branch</i> <code>*/main</code> →
+      <i>Script Path</i> <b><code>Jenkinsfile</code></b>.</p>
+      <p><span class="num">3</span><b>Build Now</b>. La 1ª vez solo registra los parámetros;
+      lanza otra vez con <b>Build with Parameters</b>.</p>
+    </div>
+    <div class="col-40">
+      <div class="call key">
+        <b>Esto es Pipeline as Code de verdad:</b> Jenkins ya no guarda tu receta.
+        La lee del repositorio en cada ejecución. Cambias el <code>Jenkinsfile</code>,
+        haces push, y el pipeline cambia solo.
+      </div>
+      <div class="card amber">
+        <h3>Parámetros que verás</h3>
+        <ul class="tight small">
+          <li><code>RUN_SAST</code> — SonarQube. Si está apagado, la etapa <b>se omite sola</b> (verde)</li>
+          <li><code>RUN_DAST</code> — ZAP (3-5 min): <b>déjalo desmarcado</b> salvo que te sobre tiempo</li>
+          <li><code>BLOQUEAR_SI_HAY_SECRETOS</code> — el quality gate</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 27 · RETO ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Reto final · el que de verdad importa</div>
+  <h2>Convierte el aviso en un bloqueo</h2>
+  <div class="cols">
+    <div class="col-60">
+      <p><span class="num">1</span>Lanza el pipeline con <b>Build with Parameters</b> y marca
+      <code>BLOQUEAR_SI_HAY_SECRETOS</code>.</p>
+      <p><span class="num">2</span>Observa: el build pasa de <b>🟡 amarillo</b> a <b>🔴 rojo</b> y
+      <b>las etapas siguientes ni se ejecutan</b>.</p>
+      <p><span class="num">3</span>Ahora <b>arréglalo</b>: en una rama, saca el secreto de
+      <code>app.py</code>, push, y relanza con <code>GIT_BRANCH=fix-secretos</code>.</p>
+      <pre class="sm"><span class="c-com"># antes</span>
+AWS_SECRET = <span class="c-str">"AKIAIOSFODNN7FAKEFAKE"</span>
+<span class="c-com"># después</span>
+AWS_SECRET = os.environ.get(<span class="c-str">"AWS_SECRET"</span>)</pre>
+      <p><span class="num">4</span><b>Sigue en ROJO.</b> Gitleaks no analiza solo el código:
+      analiza <b>todo el historial de git</b>, y el commit viejo sigue ahí.</p>
+    </div>
+    <div class="col-40">
+      <div class="call stop">
+        <b>La lección de la clase:</b> un secreto commiteado <b>está quemado</b>.
+        Borrarlo del fichero no lo borra de la historia, ni de los forks, ni de los backups.
+        Lo único que sirve es <b>rotar la credencial</b>.
+      </div>
+      <div class="card violet">
+        <h3>Si te sobra tiempo</h3>
+        <ul class="tight small">
+          <li>Activa <code>RUN_DAST</code> y mira la pestaña <b>Informe OWASP ZAP</b> del build.</li>
+          <li>Añade <code>--exit-code 1</code> a Trivy para bloquear por CVEs críticos.</li>
+          <li>Programa el job cada noche: <i>Build Triggers ▸ Build periodically ▸</i> <code>H 2 * * *</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 28 · RESULTADOS ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Dónde se leen los resultados</div>
+  <h2>Tres sitios, tres preguntas distintas</h2>
+  <div class="cols g6">
+    <div class="card">
+      <h3>Jenkins <span class="small">:8180</span></h3>
+      <p class="small"><b>¿Pasó o no pasó?</b></p>
+      <ul class="tight small">
+        <li>Semáforo y tiempos por etapa</li>
+        <li>Console Output (la verdad completa)</li>
+        <li>Artefactos descargables</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>SonarQube <span class="small">:9000</span></h3>
+      <p class="small"><b>¿Qué está mal en mi código?</b></p>
+      <ul class="tight small">
+        <li><b>Security Hotspots</b>: password en el código, MD5, CSRF off, imagen como root</li>
+        <li>Línea exacta y cómo arreglarlo</li>
+        <li>Verás <b>0 Vulnerabilities</b>: la detección de inyecciones (<i>taint analysis</i>)
+            es de pago. <b>No está roto</b> — es la lección.</li>
+      </ul>
+    </div>
+    <div class="card violet">
+      <h3>DefectDojo <span class="small">:8080</span></h3>
+      <p class="small"><b>¿Cuál es mi riesgo total?</b></p>
+      <ul class="tight small">
+        <li>Todos los hallazgos, de todas las herramientas</li>
+        <li>Por severidad, deduplicados</li>
+        <li>Triaje: falso positivo / riesgo aceptado</li>
+      </ul>
+    </div>
+  </div>
+  <div class="call key" style="margin-top:4mm">
+    <b>Fíjate:</b> en DefectDojo, dentro del producto <b>"DevSecOps Lab"</b>, ahora conviven
+    engagements de <b>GitLab CI</b> (<code>Pipeline #…</code>) y de <b>Jenkins</b>
+    (<code>Jenkins · …</code>). Dos orquestadores, un único panel de riesgo. <b>Eso es gobierno de vulnerabilidades.</b>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 29 · SEPARADOR CIERRE ══════════════════════════ -->
+<section class="slide dark">
+  <div class="sep-num">06</div>
+  <div class="cover-wrap" style="padding-top:26mm">
+    <div class="kicker">Bloque 6</div>
+    <h1 style="font-size:26pt">Para llevarse a casa</h1>
+    <div class="lead">Comparativa honesta, seguridad del propio Jenkins y qué estudiar después.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 30 · COMPARATIVA ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Sin fanatismos</div>
+  <h2>Jenkins vs GitLab CI: ¿cuál elijo?</h2>
+  <table class="sm">
+    <tr><th style="width:40mm">Criterio</th><th style="width:calc(50% - 20mm)">Jenkins</th><th>GitLab CI</th></tr>
+    <tr><td><b>Instalación</b></td><td class="mid">Servidor aparte que hay que mantener</td><td class="ok">Ya viene con GitLab</td></tr>
+    <tr><td><b>Configuración</b></td><td><code>Jenkinsfile</code> (Groovy) + UI</td><td><code>.gitlab-ci.yml</code> (YAML)</td></tr>
+    <tr><td><b>Curva de aprendizaje</b></td><td class="mid">Más pronunciada</td><td class="ok">Más suave</td></tr>
+    <tr><td><b>Flexibilidad</b></td><td class="ok">Prácticamente ilimitada (+1.800 plugins)</td><td class="mid">La que da GitLab</td></tr>
+    <tr><td><b>Independencia del SCM</b></td><td class="ok">Total: GitHub, GitLab, SVN, Bitbucket…</td><td class="no">Atado a GitLab</td></tr>
+    <tr><td><b>Entornos aislados / on-prem</b></td><td class="ok">Su terreno natural</td><td class="mid">Posible, más pesado</td></tr>
+    <tr><td><b>Mantenimiento</b></td><td class="no">Tuyo: parches, plugins, backups</td><td class="ok">Integrado</td></tr>
+    <tr><td><b>Coste</b></td><td class="ok">Gratis (pagas en horas de administración)</td><td class="mid">Minutos de CI / licencia</td></tr>
+  </table>
+  <div class="call" style="margin-top:3mm">
+    <b>En la práctica:</b> proyecto nuevo, todo en GitLab, equipo pequeño <span class="arrow">→</span> <b>GitLab CI</b>.
+    Empresa con 15 años de historia, repos por todas partes, integraciones raras y sin internet
+    <span class="arrow">→</span> <b>Jenkins</b>. Y muchísimas empresas tienen <b>los dos</b>.
+  </div>
+</section>
+
+<!-- ══════════════════════════ 31 · SEGURIDAD DE JENKINS ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Jenkins también es un activo que hay que proteger</div>
+  <h2>Asegurar el propio servidor de CI</h2>
+  <div class="cols g6">
+    <div>
+      <div class="card red">
+        <h3>Por qué es un objetivo goloso</h3>
+        <ul class="tight small">
+          <li>Guarda <b>todas las credenciales</b> de despliegue: cloud, registries, producción.</li>
+          <li>Puede <b>ejecutar código arbitrario</b> por diseño: es su función.</li>
+          <li>Suele tener acceso de red a <b>producción</b>.</li>
+          <li>Con el socket de Docker montado, un pipeline malicioso = <b>root en el host</b>.</li>
+        </ul>
+        <p class="small">Comprometer el CI es comprometer <b>toda la cadena de suministro</b> del software.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3>Controles mínimos</h3>
+        <ul class="tight small">
+          <li><b>Nunca</b> expuesto a internet sin VPN/SSO. Y con HTTPS.</li>
+          <li><b>RBAC</b> real (<i>Matrix Authorization</i>): no todos administradores.</li>
+          <li>Builds en <b>agentes efímeros</b>, jamás en el controller.</li>
+          <li>Plugins <b>mínimos</b> y actualizados; revisar los avisos de seguridad.</li>
+          <li>Secretos en <b>Credentials</b> (o Vault), nunca en el Jenkinsfile.</li>
+          <li><b>Backup</b> de <code>JENKINS_HOME</code> y auditoría de quién cambia jobs.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="call warn" style="margin-top:2mm">
+    <b>Nuestro laboratorio incumple varias de estas a propósito</b> (Jenkins como root, socket montado,
+    todos administradores). Está bien saberlo: <b>un lab no es producción</b>.
+  </div>
+</section>
+
+<!-- ══════════════════════════ 32 · RESUMEN ══════════════════════════ -->
+<section class="slide">
+  <div class="kicker">Resumen</div>
+  <h2>Las 8 ideas que deberías recordar mañana</h2>
+  <div class="cols g6">
+    <div>
+      <p><span class="num">1</span><b>Jenkins es un orquestador</b>: no analiza nada, <b>llama</b> a quien analiza.</p>
+      <p><span class="num">2</span><b>Pipeline as Code</b>: la receta vive en el repo, en un <code>Jenkinsfile</code>.</p>
+      <p><span class="num">3</span><b>Controller + agentes + executors</b>: quién manda, quién ejecuta y cuántos a la vez.</p>
+      <p><span class="num">4</span><b>Credentials</b>: los secretos, fuera del código y enmascarados en el log.</p>
+    </div>
+    <div>
+      <p><span class="num">5</span><b>Contenedores como herramientas</b>: Jenkins limpio, versiones controladas.</p>
+      <p><span class="num">6</span><b>Verde / amarillo / rojo</b> es una <b>decisión de seguridad</b>, no un color.</p>
+      <p><span class="num">7</span><b>Quality gate progresivo</b>: primero medir, después congelar, al final bloquear.</p>
+      <p><span class="num">8</span><b>El CI es un activo crítico</b>: protégelo como protegerías producción.</p>
+    </div>
+  </div>
+  <div class="call key" style="margin-top:2mm">
+    <b>Y la más importante:</b> lo que aprendiste con GitLab CI te sirvió intacto aquí.
+    Las herramientas cambian cada 3 años; <b>los conceptos, no</b>.
+  </div>
+</section>
+
+<!-- ══════════════════════════ 33 · CIERRE ══════════════════════════ -->
+<section class="slide dark">
+  <div class="cover-wrap" style="padding-top:16mm">
+    <div class="kicker">Fin de la sesión</div>
+    <h1 style="font-size:28pt">¿Preguntas?</h1>
+    <div class="cols" style="margin-top:6mm">
+      <div>
+        <h3>Para seguir practicando</h3>
+        <ul class="tight small" style="color:#cbd5e1">
+          <li>Monta un <b>Multibranch Pipeline</b> y mira cómo aparece un job por rama.</li>
+          <li>Configura un <b>webhook</b> de GitLab para que el push lance Jenkins solo.</li>
+          <li>Añade una etapa de <b>tests</b> con <code>junit</code> y mira las gráficas.</li>
+          <li>Sustituye <code>docker run</code> por <code>agent { docker { image '…' } }</code>.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Recursos</h3>
+        <ul class="tight small" style="color:#cbd5e1">
+          <li><code>&lt;tu-jenkins&gt;/pipeline-syntax</code> — generador de sintaxis</li>
+          <li>jenkins.io/doc/book/pipeline — la referencia oficial</li>
+          <li><code>docs/jenkins/Practica-Jenkins-Alumno.pdf</code> — el paso a paso de hoy</li>
+          <li><code>sample-project/Jenkinsfile</code> — el pipeline completo comentado</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="cover-foot">Academia de Ciberseguridad · Laboratorio DevSecOps · Sesión 2: Jenkins</div>
+</section>
+
+</body>
+</html>

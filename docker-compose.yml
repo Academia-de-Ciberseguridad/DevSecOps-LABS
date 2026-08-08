@@ -376,24 +376,38 @@ services:
   # ===========================================================
   # Jenkins - Orquestador CI/CD (alternativa enterprise a GitLab CI)
   # Puerto: 8180 (8080=DefectDojo, 8090=ZAP, 9000=SonarQube)
+  #
+  # ⚠️ Se construye desde config/jenkins/Dockerfile porque la imagen oficial
+  #    NO incluye el cliente `docker`: sin él, montar el socket no sirve de nada.
+  #    Arrancar con:  ./scripts/setup-jenkins.sh   (build + wait + password)
+  #
+  # ⚠️ JENKINS_HOME va como BIND MOUNT con la MISMA ruta dentro y fuera
+  #    (/var/jenkins_home:/var/jenkins_home). Motivo: el pipeline lanza
+  #    contenedores hermanos con `docker run -v "$WORKSPACE":/src`, y esa ruta
+  #    la resuelve el DEMONIO DEL HOST. Con un volumen con nombre, el host no
+  #    conoce /var/jenkins_home/workspace/... y montaría un directorio VACÍO
+  #    (los escáneres no encontrarían ni un fichero y saldrían "sin hallazgos").
   # ===========================================================
   jenkins:
-    image: jenkins/jenkins:lts-jdk17
+    build:
+      context: ./config/jenkins
+      dockerfile: Dockerfile
+    image: devsecops-jenkins:lts
     container_name: devsecops-jenkins
     restart: unless-stopped
     user: root
     environment:
-      JAVA_OPTS: "-Xms256m -Xmx512m -Djenkins.install.runSetupWizard=true"
+      JAVA_OPTS: "-Xms256m -Xmx768m -Djenkins.install.runSetupWizard=true -Dhudson.model.DirectoryBrowserSupport.CSP="
     ports:
       - "${JENKINS_PORT:-8180}:8080"
       - "${JENKINS_AGENT_PORT:-50000}:50000"
     volumes:
-      - jenkins-home:/var/jenkins_home
+      - /var/jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 1536M
         reservations:
           memory: 512M
     networks:
@@ -445,8 +459,15 @@ volumes:
   defectdojo-redis-data:
   prometheus-data:
   grafana-data:
-  jenkins-home:
   gitlab-runner-config:
+  # Caché compartida de la base de datos de vulnerabilidades de Trivy.
+  # Sin ella, CADA job de CADA alumno se descarga ~50 MB de CVEs (lento y
+  # con riesgo de rate-limit de ghcr.io). Los jobs la montan con:
+  #   -v trivy-cache:/root/.cache/trivy
+  trivy-cache:
+    name: trivy-cache
+  # NOTA: Jenkins ya NO usa un volumen con nombre. Ver el comentario del
+  # servicio `jenkins` (bind mount /var/jenkins_home con la misma ruta).
 
 # ===========================================================
 # Red del laboratorio
